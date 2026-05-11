@@ -1,0 +1,128 @@
+{
+	"openapi": "3.0.0",
+	"components": {
+		"examples": {},
+		"headers": {},
+		"parameters": {},
+		"requestBodies": {},
+		"responses": {},
+		"schemas": {
+			"GetLinksResponse": {
+				"properties": {
+					"spotifyUrl": {
+						"type": "string"
+					},
+					"appleMusicUrl": {
+						"type": "string"
+					},
+					"deezerUrl": {
+						"type": "string"
+					},
+					"tidalUrl": {
+						"type": "string"
+					},
+					"imageUrl": {
+						"type": "string"
+					},
+					"albumName": {
+						"type": "string"
+					},
+					"artistName": {
+						"type": "string"
+					}
+				},
+				"required": [
+					"spotifyUrl",
+					"imageUrl",
+					"albumName",
+					"artistName"
+				],
+				"type": "object",
+				"additionalProperties": false
+			},
+			"ErrorResponse": {
+				"properties": {
+					"message": {
+						"type": "string"
+					}
+				},
+				"required": [
+					"message"
+				],
+				"type": "object",
+				"additionalProperties": false
+			}
+		},
+		"securitySchemes": {}
+	},
+	"info": {
+		"title": "multilink-server API",
+		"version": "1.0.0",
+		"description": "OpenAPI documentation for the Express server."
+	},
+	"paths": {
+		"/get_links": {
+			"get": {
+				"operationId": "GetAlbum",
+				"responses": {
+					"200": {
+						"description": "OK",
+						"content": {
+							"application/json": {
+								"schema": {
+									"anyOf": [
+										{
+											"$ref": "#/components/schemas/GetLinksResponse"
+										},
+										{
+											"$ref": "#/components/schemas/ErrorResponse"
+										}
+									]
+								}
+							}
+						}
+					},
+					"400": {
+						"description": "",
+						"content": {
+							"application/json": {
+								"schema": {
+									"$ref": "#/components/schemas/ErrorResponse"
+								}
+							}
+						}
+					},
+					"500": {
+						"description": "",
+						"content": {
+							"application/json": {
+								"schema": {
+									"$ref": "#/components/schemas/ErrorResponse"
+								}
+							}
+						}
+					}
+				},
+				"tags": [
+					"Get links"
+				],
+				"security": [],
+				"parameters": [
+					{
+						"in": "query",
+						"name": "spotifyUrl",
+						"required": true,
+						"schema": {
+							"type": "string"
+						}
+					}
+				]
+			}
+		}
+	},
+	"servers": [
+		{
+			"url": "/"
+		}
+	]
+}

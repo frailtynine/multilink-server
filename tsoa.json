@@ -1,0 +1,22 @@
+{
+  "entryFile": "src/baseApp.ts",
+  "noImplicitAdditionalProperties": "throw-on-extras",
+  "controllerPathGlobs": [
+    "src/controllers/*Controller.ts"
+  ],
+  "spec": {
+    "outputDirectory": "src/generated",
+    "specVersion": 3,
+    "basePath": "/",
+    "spec": {
+      "info": {
+        "title": "multilink-server API",
+        "version": "1.0.0",
+        "description": "OpenAPI documentation for the Express server."
+      }
+    }
+  },
+  "routes": {
+    "routesDir": "src/generated"
+  }
+}

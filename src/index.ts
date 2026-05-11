@@ -1,11 +1,11 @@
-import express from 'express';
-import helloRouter from './endpoints/helloWorldController';
+import 'dotenv/config';
+import app from './app';
 
-const app = express();
-const port = 3000;
+const port = Number(process.env.PORT ?? 3000);
 
-app.use(express.json());
-app.use('/api', helloRouter);
+if (Number.isNaN(port)) {
+    throw new Error('PORT must be a valid number');
+}
 
 app.listen(port, () => {
     console.log(`Server is running on http://localhost:${port}`);
