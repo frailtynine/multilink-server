@@ -2,13 +2,14 @@ import { AppleMusicFinder } from '../features/AppleMusic';
 import { getSpotifyAlbumDetails, getSpotifyData } from '../features/Spotify';
 import { ErrorResponse, GetLinksResponse } from '../types/api';
 import getTidalUrl from '../features/Tidal';
-import { Get, Query, Res, Response, Route, SuccessResponse, Tags, TsoaResponse } from 'tsoa';
+import { Get, Query, Res, Response, Route, SuccessResponse, Tags, TsoaResponse, Security } from 'tsoa';
 import getDeezerData from '../features/Deezer';
 
 @Route('get_links')
 @Tags('Get links')
 export class GetLinksController {
     @Get()
+    @Security('api_token')
     @SuccessResponse('200', 'OK')
     @Response<ErrorResponse>(400, 'Bad Request')
     @Response<ErrorResponse>(500, 'Internal Server Error')

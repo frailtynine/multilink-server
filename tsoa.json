@@ -14,9 +14,17 @@
         "version": "1.0.0",
         "description": "OpenAPI documentation for the Express server."
       }
+    },
+    "securityDefinitions": {
+      "api_token": {
+        "type": "apiKey",
+        "name": "Authorization",
+        "in": "header"
+      }
     }
   },
   "routes": {
-    "routesDir": "src/generated"
+    "routesDir": "src/generated",
+    "authenticationModule": "src/middleware/auth.ts"
   }
 }
