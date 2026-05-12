@@ -1,5 +1,6 @@
 import dotenv from "dotenv";
 import { Spotifly } from "@manhgdev/spotifyweb";
+import { getLogger } from "../logging/logger";
 import {
     SpotifyAlbumData,
     SpotifyAlbumDetails,
@@ -8,6 +9,7 @@ import {
 } from "../types/spotify";
 
 dotenv.config();
+const logger = getLogger('spotify');
 
 export function parseSpotifyId(spotifyUrl: string): string {
     const { hostname, pathname } = new URL(spotifyUrl);
@@ -105,7 +107,7 @@ export const getSpotifyData = async (
     try {
         return await client.getAlbum(spotifyId);
     } catch (error) {
-        console.error('Error fetching Spotify data:', error);
+        logger.error('Failed to fetch Spotify data', { error, spotifyId });
         throw new Error('Failed to fetch Spotify data');
     }
 };

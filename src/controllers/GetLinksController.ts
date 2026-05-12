@@ -1,5 +1,6 @@
 import { AppleMusicFinder } from '../features/AppleMusic';
 import { getSpotifyAlbumDetails, getSpotifyData } from '../features/Spotify';
+import { getLogger } from '../logging/logger';
 import { ErrorResponse, GetLinksResponse } from '../types/api';
 import getTidalUrl from '../features/Tidal';
 import { Get, Query, Res, Response, Route, SuccessResponse, Tags, TsoaResponse, Security } from 'tsoa';
@@ -8,6 +9,8 @@ import getDeezerData from '../features/Deezer';
 @Route('get_links')
 @Tags('Get links')
 export class GetLinksController {
+    private readonly logger = getLogger('get-links-controller');
+
     @Get()
     @Security('api_token')
     @SuccessResponse('200', 'OK')
@@ -26,7 +29,7 @@ export class GetLinksController {
                 return badRequestResponse(400, { message: 'Invalid Spotify URL' });
             }
 
-            console.error('Failed to fetch album from Spotify', error);
+            this.logger.error('Failed to fetch album from Spotify', { error, spotifyUrl });
             return serverErrorResponse(500, { message: 'Failed to fetch album from Spotify' });
         }
 
@@ -38,7 +41,12 @@ export class GetLinksController {
                 spotifyAlbumDetails.releaseDate,
             );
         } catch (error) {
-            console.error('Failed to fetch album link from Apple Music', error);
+            this.logger.error('Failed to fetch album link from Apple Music', {
+                error,
+                albumName: spotifyAlbumDetails.albumName,
+                artistName: spotifyAlbumDetails.primaryArtistName,
+                releaseDate: spotifyAlbumDetails.releaseDate,
+            });
         }
 
         let deezerUrl: string | undefined;
@@ -48,7 +56,11 @@ export class GetLinksController {
                 spotifyAlbumDetails.primaryArtistName,
             );
         } catch (error) {
-            console.error('Failed to fetch album link from Deezer', error);
+            this.logger.error('Failed to fetch album link from Deezer', {
+                error,
+                albumName: spotifyAlbumDetails.albumName,
+                artistName: spotifyAlbumDetails.primaryArtistName,
+            });
         }
 
         let tidalUrl: string | undefined;
@@ -59,7 +71,12 @@ export class GetLinksController {
                 spotifyAlbumDetails.releaseDate,
             );
         } catch (error) {
-            console.error('Failed to fetch album link from Tidal', error);
+            this.logger.error('Failed to fetch album link from Tidal', {
+                error,
+                albumName: spotifyAlbumDetails.albumName,
+                artistName: spotifyAlbumDetails.primaryArtistName,
+                releaseDate: spotifyAlbumDetails.releaseDate,
+            });
         }
         return {
             spotifyUrl: spotifyAlbumDetails.spotifyUrl,

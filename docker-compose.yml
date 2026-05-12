@@ -1,0 +1,28 @@
+services:
+  multilink-server:
+    build:
+      context: .
+      target: runtime
+    image: multilink-server:dev
+    restart: unless-stopped
+    env_file:
+      - .env
+    environment:
+      APP_NAME: multilink-server
+      LOG_LEVEL: ${LOG_LEVEL:-INFO}
+      LOKI_URL: ${LOKI_URL:-}
+      LOKI_USER: ${LOKI_USER:-}
+      LOKI_API_KEY: ${LOKI_API_KEY:-}
+      NODE_ENV: production
+      PORT: 3000
+      PUPPETEER_EXECUTABLE_PATH: /usr/bin/chromium
+      # Reserved for a future Redis-backed feature set.
+      REDIS_URL: ${REDIS_URL:-}
+    ports:
+      - "127.0.0.1:${EXTERNAL_PORT:-3000}:3000"
+    networks:
+      - multilink-internal
+
+networks:
+  multilink-internal:
+    driver: bridge

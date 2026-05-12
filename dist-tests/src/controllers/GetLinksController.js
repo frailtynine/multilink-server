@@ -15,10 +15,14 @@ Object.defineProperty(exports, "__esModule", { value: true });
 exports.GetLinksController = void 0;
 const AppleMusic_1 = require("../features/AppleMusic");
 const Spotify_1 = require("../features/Spotify");
+const logger_1 = require("../logging/logger");
 const Tidal_1 = __importDefault(require("../features/Tidal"));
 const tsoa_1 = require("tsoa");
 const Deezer_1 = __importDefault(require("../features/Deezer"));
 let GetLinksController = class GetLinksController {
+    constructor() {
+        this.logger = (0, logger_1.getLogger)('get-links-controller');
+    }
     async getAlbum(spotifyUrl, badRequestResponse, serverErrorResponse) {
         let spotifyAlbumDetails;
         try {
@@ -28,7 +32,7 @@ let GetLinksController = class GetLinksController {
             if (error instanceof Error && error.message === 'Invalid Spotify URL') {
                 return badRequestResponse(400, { message: 'Invalid Spotify URL' });
             }
-            console.error('Failed to fetch album from Spotify', error);
+            this.logger.error('Failed to fetch album from Spotify', { error, spotifyUrl });
             return serverErrorResponse(500, { message: 'Failed to fetch album from Spotify' });
         }
         let appleMusicUrl;
@@ -36,21 +40,35 @@ let GetLinksController = class GetLinksController {
             appleMusicUrl = await (0, AppleMusic_1.AppleMusicFinder)(spotifyAlbumDetails.albumName, spotifyAlbumDetails.primaryArtistName, spotifyAlbumDetails.releaseDate);
         }
         catch (error) {
-            console.error('Failed to fetch album link from Apple Music', error);
+            this.logger.error('Failed to fetch album link from Apple Music', {
+                error,
+                albumName: spotifyAlbumDetails.albumName,
+                artistName: spotifyAlbumDetails.primaryArtistName,
+                releaseDate: spotifyAlbumDetails.releaseDate,
+            });
         }
         let deezerUrl;
         try {
             deezerUrl = await (0, Deezer_1.default)(spotifyAlbumDetails.albumName, spotifyAlbumDetails.primaryArtistName);
         }
         catch (error) {
-            console.error('Failed to fetch album link from Deezer', error);
+            this.logger.error('Failed to fetch album link from Deezer', {
+                error,
+                albumName: spotifyAlbumDetails.albumName,
+                artistName: spotifyAlbumDetails.primaryArtistName,
+            });
         }
         let tidalUrl;
         try {
             tidalUrl = await (0, Tidal_1.default)(spotifyAlbumDetails.albumName, spotifyAlbumDetails.primaryArtistName, spotifyAlbumDetails.releaseDate);
         }
         catch (error) {
-            console.error('Failed to fetch album link from Tidal', error);
+            this.logger.error('Failed to fetch album link from Tidal', {
+                error,
+                albumName: spotifyAlbumDetails.albumName,
+                artistName: spotifyAlbumDetails.primaryArtistName,
+                releaseDate: spotifyAlbumDetails.releaseDate,
+            });
         }
         return {
             spotifyUrl: spotifyAlbumDetails.spotifyUrl,
@@ -66,6 +84,7 @@ let GetLinksController = class GetLinksController {
 exports.GetLinksController = GetLinksController;
 __decorate([
     (0, tsoa_1.Get)(),
+    (0, tsoa_1.Security)('api_token'),
     (0, tsoa_1.SuccessResponse)('200', 'OK'),
     (0, tsoa_1.Response)(400, 'Bad Request'),
     (0, tsoa_1.Response)(500, 'Internal Server Error'),

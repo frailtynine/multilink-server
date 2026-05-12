@@ -53,7 +53,13 @@
                 "additionalProperties": false
             }
         },
-        "securitySchemes": {}
+        "securitySchemes": {
+            "api_token": {
+                "type": "apiKey",
+                "name": "Authorization",
+                "in": "header"
+            }
+        }
     },
     "info": {
         "title": "multilink-server API",
@@ -106,7 +112,11 @@
                 "tags": [
                     "Get links"
                 ],
-                "security": [],
+                "security": [
+                    {
+                        "api_token": []
+                    }
+                ],
                 "parameters": [
                     {
                         "in": "query",

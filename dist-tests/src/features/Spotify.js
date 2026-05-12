@@ -11,7 +11,9 @@ exports.getSpotifyReleaseDate = getSpotifyReleaseDate;
 exports.getSpotifyAlbumDetails = getSpotifyAlbumDetails;
 const dotenv_1 = __importDefault(require("dotenv"));
 const spotifyweb_1 = require("@manhgdev/spotifyweb");
+const logger_1 = require("../logging/logger");
 dotenv_1.default.config();
+const logger = (0, logger_1.getLogger)('spotify');
 function parseSpotifyId(spotifyUrl) {
     const { hostname, pathname } = new URL(spotifyUrl);
     if (hostname !== 'open.spotify.com') {
@@ -85,7 +87,7 @@ const getSpotifyData = async (spotifyUrl, client = createSpotifyClient()) => {
         return await client.getAlbum(spotifyId);
     }
     catch (error) {
-        console.error('Error fetching Spotify data:', error);
+        logger.error('Failed to fetch Spotify data', { error, spotifyId });
         throw new Error('Failed to fetch Spotify data');
     }
 };
