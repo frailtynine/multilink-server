@@ -8,10 +8,15 @@ exports.parseSpotifyId = parseSpotifyId;
 exports.createSpotifyClient = createSpotifyClient;
 exports.getSpotifyAlbum = getSpotifyAlbum;
 exports.getSpotifyReleaseDate = getSpotifyReleaseDate;
+exports.getSpotifyAlbumUrlFromSearchResult = getSpotifyAlbumUrlFromSearchResult;
 exports.getSpotifyAlbumDetails = getSpotifyAlbumDetails;
+exports.findMatchingSpotifyAlbum = findMatchingSpotifyAlbum;
+exports.searchSpotifyAlbums = searchSpotifyAlbums;
+exports.findSpotifyAlbumUrl = findSpotifyAlbumUrl;
 const dotenv_1 = __importDefault(require("dotenv"));
 const spotifyweb_1 = require("@manhgdev/spotifyweb");
 const logger_1 = require("../logging/logger");
+const releaseDate_1 = require("../utils/releaseDate");
 dotenv_1.default.config();
 const logger = (0, logger_1.getLogger)('spotify');
 function parseSpotifyId(spotifyUrl) {
@@ -26,6 +31,16 @@ function parseSpotifyId(spotifyUrl) {
     const spotifyId = pathSegments[1];
     if (!spotifyId) {
         throw new Error('Invalid Spotify URL');
+    }
+    return spotifyId;
+}
+function normalizeText(value) {
+    return value.replace(/[^a-z0-9]/gi, '').toLowerCase();
+}
+function getSpotifyIdFromUri(uri) {
+    const spotifyId = uri.split(':').pop();
+    if (!spotifyId) {
+        throw new Error('Spotify album is missing an id');
     }
     return spotifyId;
 }
@@ -57,11 +72,11 @@ function getSpotifyShareUrl(spotifyAlbum) {
     if (shareUrl) {
         return shareUrl;
     }
-    const spotifyId = spotifyAlbum.uri.split(':').pop();
-    if (!spotifyId) {
-        throw new Error('Spotify album is missing a share URL');
-    }
+    const spotifyId = getSpotifyIdFromUri(spotifyAlbum.uri);
     return `https://open.spotify.com/album/${spotifyId}`;
+}
+function getSpotifyAlbumUrlFromSearchResult(album) {
+    return `https://open.spotify.com/album/${getSpotifyIdFromUri(album.data.uri)}`;
 }
 function getSpotifyAlbumDetails(spotifyData) {
     const spotifyAlbum = getSpotifyAlbum(spotifyData);
@@ -80,6 +95,45 @@ function getSpotifyAlbumDetails(spotifyData) {
         imageUrl: spotifyAlbum.coverArt.sources[0]?.url ?? '',
         releaseDate: getSpotifyReleaseDate(spotifyAlbum),
     };
+}
+function findMatchingSpotifyAlbum(albums, requestedAlbumName, requestedArtistName, requestedReleaseDate) {
+    const normalizedRequestedAlbumName = normalizeText(requestedAlbumName);
+    const normalizedRequestedArtistName = normalizeText(requestedArtistName);
+    let bestMatch;
+    let bestScore = Number.NEGATIVE_INFINITY;
+    for (const album of albums) {
+        const albumData = album.data;
+        const normalizedAlbumName = normalizeText(albumData.name);
+        const normalizedPrimaryArtistName = normalizeText(albumData.artists.items[0]?.profile.name ?? '');
+        let score = 0;
+        if (normalizedAlbumName === normalizedRequestedAlbumName) {
+            score += 4;
+        }
+        if (normalizedPrimaryArtistName === normalizedRequestedArtistName) {
+            score += 3;
+        }
+        if (requestedReleaseDate &&
+            (0, releaseDate_1.releaseDatesMatch)(requestedReleaseDate, `${albumData.date.year}`)) {
+            score += 2;
+        }
+        if (score > bestScore) {
+            bestMatch = album;
+            bestScore = score;
+        }
+    }
+    return bestMatch;
+}
+async function searchSpotifyAlbums(albumName, artistName, client = createSpotifyClient()) {
+    const searchResults = await client.searchAlbums(`${artistName} ${albumName}`, 10);
+    return searchResults.data.searchV2.albums.items;
+}
+async function findSpotifyAlbumUrl(albumName, artistName, releaseDate, client = createSpotifyClient()) {
+    const albums = await searchSpotifyAlbums(albumName, artistName, client);
+    const matchingAlbum = findMatchingSpotifyAlbum(albums, albumName, artistName, releaseDate);
+    if (!matchingAlbum) {
+        throw new Error('Album not found on Spotify');
+    }
+    return getSpotifyAlbumUrlFromSearchResult(matchingAlbum);
 }
 const getSpotifyData = async (spotifyUrl, client = createSpotifyClient()) => {
     const spotifyId = parseSpotifyId(spotifyUrl);

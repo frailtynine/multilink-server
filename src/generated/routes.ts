@@ -55,9 +55,9 @@ export function RegisterRoutes(app: Router) {
 
     
         const argsGetLinksController_getAlbum: Record<string, TsoaRoute.ParameterSchema> = {
-                spotifyUrl: {"in":"query","name":"spotifyUrl","required":true,"dataType":"string"},
                 badRequestResponse: {"in":"res","name":"400","required":true,"ref":"ErrorResponse"},
                 serverErrorResponse: {"in":"res","name":"500","required":true,"ref":"ErrorResponse"},
+                url: {"in":"query","name":"url","dataType":"string"},
         };
         app.get('/get_links',
             authenticateMiddleware([{"api_token":[]}]),

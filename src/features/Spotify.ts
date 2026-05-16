@@ -1,11 +1,13 @@
 import dotenv from "dotenv";
 import { Spotifly } from "@manhgdev/spotifyweb";
 import { getLogger } from "../logging/logger";
+import { releaseDatesMatch } from "../utils/releaseDate";
 import {
     SpotifyAlbumData,
     SpotifyAlbumDetails,
     SpotifyAlbumResponse,
     SpotifyClient,
+    SpotifySearchAlbumItem,
 } from "../types/spotify";
 
 dotenv.config();
@@ -27,6 +29,20 @@ export function parseSpotifyId(spotifyUrl: string): string {
 
     if (!spotifyId) {
         throw new Error('Invalid Spotify URL');
+    }
+
+    return spotifyId;
+}
+
+function normalizeText(value: string): string {
+    return value.replace(/[^a-z0-9]/gi, '').toLowerCase();
+}
+
+function getSpotifyIdFromUri(uri: string): string {
+    const spotifyId = uri.split(':').pop();
+
+    if (!spotifyId) {
+        throw new Error('Spotify album is missing an id');
     }
 
     return spotifyId;
@@ -68,13 +84,13 @@ function getSpotifyShareUrl(spotifyAlbum: SpotifyAlbumData): string {
         return shareUrl;
     }
 
-    const spotifyId = spotifyAlbum.uri.split(':').pop();
-
-    if (!spotifyId) {
-        throw new Error('Spotify album is missing a share URL');
-    }
+    const spotifyId = getSpotifyIdFromUri(spotifyAlbum.uri);
 
     return `https://open.spotify.com/album/${spotifyId}`;
+}
+
+export function getSpotifyAlbumUrlFromSearchResult(album: SpotifySearchAlbumItem): string {
+    return `https://open.spotify.com/album/${getSpotifyIdFromUri(album.data.uri)}`;
 }
 
 export function getSpotifyAlbumDetails(spotifyData: SpotifyAlbumResponse): SpotifyAlbumDetails {
@@ -96,6 +112,79 @@ export function getSpotifyAlbumDetails(spotifyData: SpotifyAlbumResponse): Spoti
         imageUrl: spotifyAlbum.coverArt.sources[0]?.url ?? '',
         releaseDate: getSpotifyReleaseDate(spotifyAlbum),
     };
+}
+
+export function findMatchingSpotifyAlbum(
+    albums: SpotifySearchAlbumItem[],
+    requestedAlbumName: string,
+    requestedArtistName: string,
+    requestedReleaseDate?: string,
+): SpotifySearchAlbumItem | undefined {
+    const normalizedRequestedAlbumName = normalizeText(requestedAlbumName);
+    const normalizedRequestedArtistName = normalizeText(requestedArtistName);
+
+    let bestMatch: SpotifySearchAlbumItem | undefined;
+    let bestScore = Number.NEGATIVE_INFINITY;
+
+    for (const album of albums) {
+        const albumData = album.data;
+        const normalizedAlbumName = normalizeText(albumData.name);
+        const normalizedPrimaryArtistName = normalizeText(albumData.artists.items[0]?.profile.name ?? '');
+        let score = 0;
+
+        if (normalizedAlbumName === normalizedRequestedAlbumName) {
+            score += 4;
+        }
+
+        if (normalizedPrimaryArtistName === normalizedRequestedArtistName) {
+            score += 3;
+        }
+
+        if (
+            requestedReleaseDate &&
+            releaseDatesMatch(requestedReleaseDate, `${albumData.date.year}`)
+        ) {
+            score += 2;
+        }
+
+        if (score > bestScore) {
+            bestMatch = album;
+            bestScore = score;
+        }
+    }
+
+    return bestMatch;
+}
+
+export async function searchSpotifyAlbums(
+    albumName: string,
+    artistName: string,
+    client: SpotifyClient = createSpotifyClient(),
+): Promise<SpotifySearchAlbumItem[]> {
+    const searchResults = await client.searchAlbums(`${artistName} ${albumName}`, 10);
+
+    return searchResults.data.searchV2.albums.items;
+}
+
+export async function findSpotifyAlbumUrl(
+    albumName: string,
+    artistName: string,
+    releaseDate?: string,
+    client: SpotifyClient = createSpotifyClient(),
+): Promise<string> {
+    const albums = await searchSpotifyAlbums(albumName, artistName, client);
+    const matchingAlbum = findMatchingSpotifyAlbum(
+        albums,
+        albumName,
+        artistName,
+        releaseDate,
+    );
+
+    if (!matchingAlbum) {
+        throw new Error('Album not found on Spotify');
+    }
+
+    return getSpotifyAlbumUrlFromSearchResult(matchingAlbum);
 }
 
 export const getSpotifyData = async (

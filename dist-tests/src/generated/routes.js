@@ -39,9 +39,9 @@ function RegisterRoutes(app) {
     //      Please look into the "controllerPathGlobs" config option described in the readme: https://github.com/lukeautry/tsoa
     // ###########################################################################################################
     const argsGetLinksController_getAlbum = {
-        spotifyUrl: { "in": "query", "name": "spotifyUrl", "required": true, "dataType": "string" },
         badRequestResponse: { "in": "res", "name": "400", "required": true, "ref": "ErrorResponse" },
         serverErrorResponse: { "in": "res", "name": "500", "required": true, "ref": "ErrorResponse" },
+        url: { "in": "query", "name": "url", "dataType": "string" },
     };
     app.get('/get_links', authenticateMiddleware([{ "api_token": [] }]), ...((0, runtime_1.fetchMiddlewares)(GetLinksController_1.GetLinksController)), ...((0, runtime_1.fetchMiddlewares)(GetLinksController_1.GetLinksController.prototype.getAlbum)), async function GetLinksController_getAlbum(request, response, next) {
         // WARNING: This file was auto-generated with tsoa. Please do not modify it. Re-run tsoa to re-generate this file: https://github.com/lukeautry/tsoa

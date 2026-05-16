@@ -120,8 +120,8 @@
 				"parameters": [
 					{
 						"in": "query",
-						"name": "spotifyUrl",
-						"required": true,
+						"name": "url",
+						"required": false,
 						"schema": {
 							"type": "string"
 						}
