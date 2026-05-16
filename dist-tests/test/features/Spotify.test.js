@@ -47,6 +47,62 @@ const spotifyAlbumResponse = {
         },
     },
 };
+const spotifySearchAlbumsResponse = {
+    data: {
+        searchV2: {
+            albums: {
+                items: [
+                    {
+                        data: {
+                            __typename: 'Album',
+                            uri: 'spotify:album:first-match',
+                            name: 'Graceful',
+                            artists: {
+                                items: [
+                                    {
+                                        uri: 'spotify:artist:artist-1',
+                                        profile: {
+                                            name: 'Touch Girl Apple Blossom',
+                                        },
+                                    },
+                                ],
+                            },
+                            coverArt: {
+                                sources: [],
+                            },
+                            date: {
+                                year: 2026,
+                            },
+                        },
+                    },
+                    {
+                        data: {
+                            __typename: 'Album',
+                            uri: 'spotify:album:wrong-artist',
+                            name: 'Graceful',
+                            artists: {
+                                items: [
+                                    {
+                                        uri: 'spotify:artist:artist-2',
+                                        profile: {
+                                            name: 'Someone Else',
+                                        },
+                                    },
+                                ],
+                            },
+                            coverArt: {
+                                sources: [],
+                            },
+                            date: {
+                                year: 2026,
+                            },
+                        },
+                    },
+                ],
+            },
+        },
+    },
+};
 (0, node_test_1.default)('parseSpotifyId returns the spotify id from an album URL', () => {
     const spotifyId = (0, Spotify_1.parseSpotifyId)('https://open.spotify.com/album/2up3OPMp9Tb4dAKM2erWXQ?si=example');
     strict_1.default.equal(spotifyId, '2up3OPMp9Tb4dAKM2erWXQ');
@@ -71,6 +127,9 @@ const spotifyAlbumResponse = {
         async getAlbum(id) {
             requestedSpotifyId = id;
             return spotifyAlbumResponse;
+        },
+        async searchAlbums() {
+            throw new Error('not implemented');
         },
     };
     const result = await (0, Spotify_1.getSpotifyData)('https://open.spotify.com/album/2pvLN2jTZhYg9aWQyESDps?si=example', spotifyClient);
@@ -113,4 +172,26 @@ const spotifyAlbumResponse = {
             },
         },
     }).spotifyUrl, 'https://open.spotify.com/album/2pvLN2jTZhYg9aWQyESDps');
+});
+(0, node_test_1.default)('findMatchingSpotifyAlbum prefers the result with matching album, artist, and year', () => {
+    const matchingAlbum = (0, Spotify_1.findMatchingSpotifyAlbum)(spotifySearchAlbumsResponse.data.searchV2.albums.items, 'Graceful', 'Touch Girl Apple Blossom', '2026-05-15');
+    strict_1.default.deepEqual(matchingAlbum, spotifySearchAlbumsResponse.data.searchV2.albums.items[0]);
+});
+(0, node_test_1.default)('findSpotifyAlbumUrl returns a canonical album URL from search results', async () => {
+    let requestedTerms;
+    let requestedLimit;
+    const spotifyClient = {
+        async getAlbum() {
+            throw new Error('not implemented');
+        },
+        async searchAlbums(terms, limit) {
+            requestedTerms = terms;
+            requestedLimit = limit;
+            return spotifySearchAlbumsResponse;
+        },
+    };
+    const spotifyUrl = await (0, Spotify_1.findSpotifyAlbumUrl)('Graceful', 'Touch Girl Apple Blossom', '2026-05-15', spotifyClient);
+    strict_1.default.equal(requestedTerms, 'Touch Girl Apple Blossom Graceful');
+    strict_1.default.equal(requestedLimit, 10);
+    strict_1.default.equal(spotifyUrl, 'https://open.spotify.com/album/first-match');
 });

@@ -1,10 +1,23 @@
 import { AppleMusicFinder } from '../features/AppleMusic';
-import { getSpotifyAlbumDetails, getSpotifyData } from '../features/Spotify';
+import { BandcampAlbumDetails, getBandcampAlbumDetailsFromUrl, parseBandcampAlbumUrl } from '../features/Bandcamp';
+import { findSpotifyAlbumUrl, getSpotifyAlbumDetails, getSpotifyData, parseSpotifyId } from '../features/Spotify';
 import { getLogger } from '../logging/logger';
 import { ErrorResponse, GetLinksResponse } from '../types/api';
 import getTidalUrl from '../features/Tidal';
 import { Get, Query, Res, Response, Route, SuccessResponse, Tags, TsoaResponse, Security } from 'tsoa';
 import getDeezerData from '../features/Deezer';
+
+type InputAlbumDetails = ReturnType<typeof getSpotifyAlbumDetails> | BandcampAlbumDetails;
+
+function getUrlSource(url: string): 'spotify' | 'bandcamp' {
+    try {
+        parseSpotifyId(url);
+        return 'spotify';
+    } catch {
+        parseBandcampAlbumUrl(url);
+        return 'bandcamp';
+    }
+}
 
 @Route('get_links')
 @Tags('Get links')
@@ -17,75 +30,110 @@ export class GetLinksController {
     @Response<ErrorResponse>(400, 'Bad Request')
     @Response<ErrorResponse>(500, 'Internal Server Error')
     public async getAlbum(
-        @Query() spotifyUrl: string,
         @Res() badRequestResponse: TsoaResponse<400, ErrorResponse>,
         @Res() serverErrorResponse: TsoaResponse<500, ErrorResponse>,
+        @Query() url?: string,
     ): Promise<GetLinksResponse | ErrorResponse>  {
-        let spotifyAlbumDetails: ReturnType<typeof getSpotifyAlbumDetails>;
+        if (!url) {
+            return badRequestResponse(400, { message: 'Missing input URL' });
+        }
+
+        let albumDetails: InputAlbumDetails;
+        let spotifyUrl = '';
+        let inputSource: 'spotify' | 'bandcamp';
         try {
-            spotifyAlbumDetails = getSpotifyAlbumDetails(await getSpotifyData(spotifyUrl));
-        } catch (error) {
-            if (error instanceof Error && error.message === 'Invalid Spotify URL') {
-                return badRequestResponse(400, { message: 'Invalid Spotify URL' });
+            inputSource = getUrlSource(url);
+        } catch {
+            return badRequestResponse(400, { message: 'Invalid URL. Expected a Spotify or Bandcamp album URL' });
+        }
+
+        if (inputSource === 'spotify') {
+            try {
+                const spotifyAlbumDetails = getSpotifyAlbumDetails(await getSpotifyData(url));
+                albumDetails = spotifyAlbumDetails;
+                spotifyUrl = spotifyAlbumDetails.spotifyUrl;
+            } catch (error) {
+                this.logger.error('Failed to fetch album from Spotify', { error, inputUrl: url });
+                return serverErrorResponse(500, { message: 'Failed to fetch album from Spotify' });
+            }
+        } else {
+            try {
+                albumDetails = await getBandcampAlbumDetailsFromUrl(url);
+            } catch (error) {
+                this.logger.error('Failed to fetch album from Bandcamp', { error, inputUrl: url });
+                return serverErrorResponse(500, { message: 'Failed to fetch album from Bandcamp' });
             }
 
-            this.logger.error('Failed to fetch album from Spotify', { error, spotifyUrl });
-            return serverErrorResponse(500, { message: 'Failed to fetch album from Spotify' });
+            try {
+                spotifyUrl = await findSpotifyAlbumUrl(
+                    albumDetails.albumName,
+                    albumDetails.primaryArtistName,
+                    albumDetails.releaseDate,
+                );
+            } catch (error) {
+                this.logger.error('Failed to find album on Spotify from Bandcamp data', {
+                    error,
+                    albumName: albumDetails.albumName,
+                    artistName: albumDetails.primaryArtistName,
+                    releaseDate: albumDetails.releaseDate,
+                });
+            }
         }
 
         let appleMusicUrl: string | undefined;
         try {
             appleMusicUrl = await AppleMusicFinder(
-                spotifyAlbumDetails.albumName,
-                spotifyAlbumDetails.primaryArtistName,
-                spotifyAlbumDetails.releaseDate,
+                albumDetails.albumName,
+                albumDetails.primaryArtistName,
+                albumDetails.releaseDate,
             );
         } catch (error) {
             this.logger.error('Failed to fetch album link from Apple Music', {
                 error,
-                albumName: spotifyAlbumDetails.albumName,
-                artistName: spotifyAlbumDetails.primaryArtistName,
-                releaseDate: spotifyAlbumDetails.releaseDate,
+                albumName: albumDetails.albumName,
+                artistName: albumDetails.primaryArtistName,
+                releaseDate: albumDetails.releaseDate,
             });
         }
 
         let deezerUrl: string | undefined;
         try {
             deezerUrl = await getDeezerData(
-                spotifyAlbumDetails.albumName,
-                spotifyAlbumDetails.primaryArtistName,
+                albumDetails.albumName,
+                albumDetails.primaryArtistName,
             );
         } catch (error) {
             this.logger.error('Failed to fetch album link from Deezer', {
                 error,
-                albumName: spotifyAlbumDetails.albumName,
-                artistName: spotifyAlbumDetails.primaryArtistName,
+                albumName: albumDetails.albumName,
+                artistName: albumDetails.primaryArtistName,
             });
         }
 
         let tidalUrl: string | undefined;
         try {
             tidalUrl = await getTidalUrl(
-                spotifyAlbumDetails.albumName,
-                spotifyAlbumDetails.primaryArtistName,
-                spotifyAlbumDetails.releaseDate,
+                albumDetails.albumName,
+                albumDetails.primaryArtistName,
+                albumDetails.releaseDate,
             );
         } catch (error) {
             this.logger.error('Failed to fetch album link from Tidal', {
                 error,
-                albumName: spotifyAlbumDetails.albumName,
-                artistName: spotifyAlbumDetails.primaryArtistName,
-                releaseDate: spotifyAlbumDetails.releaseDate,
+                albumName: albumDetails.albumName,
+                artistName: albumDetails.primaryArtistName,
+                releaseDate: albumDetails.releaseDate,
             });
         }
+
         return {
-            spotifyUrl: spotifyAlbumDetails.spotifyUrl,
+            spotifyUrl,
             appleMusicUrl,
             deezerUrl,
             tidalUrl,
-            imageUrl: spotifyAlbumDetails.imageUrl,
-            albumName: spotifyAlbumDetails.albumName,
-            artistName: spotifyAlbumDetails.artistName,
+            imageUrl: albumDetails.imageUrl,
+            albumName: albumDetails.albumName,
+            artistName: albumDetails.artistName,
         };
     }
 }

@@ -1,13 +1,15 @@
 import assert from 'node:assert/strict';
 import test from 'node:test';
 import {
+    findMatchingSpotifyAlbum,
+    findSpotifyAlbumUrl,
     getSpotifyAlbum,
     getSpotifyAlbumDetails,
     getSpotifyData,
     getSpotifyReleaseDate,
     parseSpotifyId,
 } from '../../src/features/Spotify';
-import { SpotifyAlbumResponse, SpotifyClient } from '../../src/types/spotify';
+import { SpotifyAlbumResponse, SpotifyClient, SpotifySearchAlbumsResponse } from '../../src/types/spotify';
 
 const spotifyAlbumResponse: SpotifyAlbumResponse = {
     data: {
@@ -51,6 +53,63 @@ const spotifyAlbumResponse: SpotifyAlbumResponse = {
     },
 };
 
+const spotifySearchAlbumsResponse: SpotifySearchAlbumsResponse = {
+    data: {
+        searchV2: {
+            albums: {
+                items: [
+                    {
+                        data: {
+                            __typename: 'Album',
+                            uri: 'spotify:album:first-match',
+                            name: 'Graceful',
+                            artists: {
+                                items: [
+                                    {
+                                        uri: 'spotify:artist:artist-1',
+                                        profile: {
+                                            name: 'Touch Girl Apple Blossom',
+                                        },
+                                    },
+                                ],
+                            },
+                            coverArt: {
+                                sources: [],
+                            },
+                            date: {
+                                year: 2026,
+                            },
+                        },
+                    },
+                    {
+                        data: {
+                            __typename: 'Album',
+                            uri: 'spotify:album:wrong-artist',
+                            name: 'Graceful',
+                            artists: {
+                                items: [
+                                    {
+                                        uri: 'spotify:artist:artist-2',
+                                        profile: {
+                                            name: 'Someone Else',
+                                        },
+                                    },
+                                ],
+                            },
+                            coverArt: {
+                                sources: [],
+                            },
+                            date: {
+                                year: 2026,
+                            },
+                        },
+                    },
+                ],
+            },
+        },
+    },
+};
+
 test('parseSpotifyId returns the spotify id from an album URL', () => {
     const spotifyId = parseSpotifyId('https://open.spotify.com/album/2up3OPMp9Tb4dAKM2erWXQ?si=example');
 
@@ -82,6 +141,9 @@ test('getSpotifyData uses the parsed album id with the new Spotify client', asyn
             requestedSpotifyId = id;
 
             return spotifyAlbumResponse;
+        },
+        async searchAlbums(): Promise<SpotifySearchAlbumsResponse> {
+            throw new Error('not implemented');
         },
     };
 
@@ -137,4 +199,42 @@ test('getSpotifyAlbum falls back to a canonical URL when shareUrl is missing', (
         }).spotifyUrl,
         'https://open.spotify.com/album/2pvLN2jTZhYg9aWQyESDps',
     );
+});
+
+test('findMatchingSpotifyAlbum prefers the result with matching album, artist, and year', () => {
+    const matchingAlbum = findMatchingSpotifyAlbum(
+        spotifySearchAlbumsResponse.data.searchV2.albums.items,
+        'Graceful',
+        'Touch Girl Apple Blossom',
+        '2026-05-15',
+    );
+
+    assert.deepEqual(matchingAlbum, spotifySearchAlbumsResponse.data.searchV2.albums.items[0]);
+});
+
+test('findSpotifyAlbumUrl returns a canonical album URL from search results', async () => {
+    let requestedTerms: string | undefined;
+    let requestedLimit: number | undefined;
+    const spotifyClient: SpotifyClient = {
+        async getAlbum(): Promise<SpotifyAlbumResponse> {
+            throw new Error('not implemented');
+        },
+        async searchAlbums(terms: string, limit?: number): Promise<SpotifySearchAlbumsResponse> {
+            requestedTerms = terms;
+            requestedLimit = limit;
+
+            return spotifySearchAlbumsResponse;
+        },
+    };
+
+    const spotifyUrl = await findSpotifyAlbumUrl(
+        'Graceful',
+        'Touch Girl Apple Blossom',
+        '2026-05-15',
+        spotifyClient,
+    );
+
+    assert.equal(requestedTerms, 'Touch Girl Apple Blossom Graceful');
+    assert.equal(requestedLimit, 10);
+    assert.equal(spotifyUrl, 'https://open.spotify.com/album/first-match');
 });

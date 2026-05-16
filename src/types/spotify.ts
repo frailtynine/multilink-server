@@ -45,6 +45,34 @@ export interface SpotifyAlbumDetails {
     releaseDate: string;
 }
 
+export interface SpotifySearchAlbumItem {
+    data: {
+        __typename: string;
+        uri: string;
+        name: string;
+        artists: {
+            items: SpotifyArtist[];
+        };
+        coverArt: {
+            sources: SpotifyImageSource[];
+        };
+        date: {
+            year: number;
+        };
+    };
+}
+
+export interface SpotifySearchAlbumsResponse {
+    data: {
+        searchV2: {
+            albums: {
+                items: SpotifySearchAlbumItem[];
+            };
+        };
+    };
+}
+
 export interface SpotifyClient {
     getAlbum(id: string): Promise<SpotifyAlbumResponse>;
+    searchAlbums(terms: string, limit?: number): Promise<SpotifySearchAlbumsResponse>;
 }

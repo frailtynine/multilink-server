@@ -1,10 +1,10 @@
 # Multilink Server
 
-Every single music multilink service went down because Spotify changed their API rate limits. So, here's something you can host ypourself. Scrapes data from Spotify, Apple Music and Deezer, for Tidal you need dev credentials. The API is protected by a token, so you can keep it private or share it with friends. Wouldn't recommend running it with thousands of requests per minute, but should be fine as a personal service.
+Every single music multilink service went down because Spotify changed their API rate limits. So, here's something you can host ypourself. Scrapes data from Spotify, Bandcamp, Apple Music and Deezer, for Tidal you need dev credentials. The API is protected by a token, so you can keep it private or share it with friends. Wouldn't recommend running it with thousands of requests per minute, but should be fine as a personal service.
 
 ## What this service does
 
-Multilink Server is a Node.js/TypeScript API that takes a Spotify album URL and returns matching links for other music platforms. The API is documented at `/docs`, and the generated OpenAPI document is available at `/openapi.json`.
+Multilink Server is a Node.js/TypeScript API that takes a Spotify or Bandcamp album URL and returns matching links for other music platforms. The API is documented at `/docs`, and the generated OpenAPI document is available at `/openapi.json`.
 
 ## Deployment requirements
 
