@@ -19,6 +19,7 @@ const models: TsoaRoute.Models = {
         "dataType": "refObject",
         "properties": {
             "spotifyUrl": {"dataType":"string","required":true},
+            "bandcampUrl": {"dataType":"string","required":true},
             "appleMusicUrl": {"dataType":"string"},
             "deezerUrl": {"dataType":"string"},
             "tidalUrl": {"dataType":"string"},

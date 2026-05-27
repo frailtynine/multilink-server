@@ -8,7 +8,11 @@ exports.normalizeBandcampReleaseDate = normalizeBandcampReleaseDate;
 exports.getBandcampAlbumDetails = getBandcampAlbumDetails;
 exports.getBandcampAlbumData = getBandcampAlbumData;
 exports.getBandcampAlbumDetailsFromUrl = getBandcampAlbumDetailsFromUrl;
+exports.composeBandcampSearchUrl = composeBandcampSearchUrl;
 const bandcamp_fetch_1 = __importDefault(require("bandcamp-fetch"));
+function normalizeBandcampSearchTerm(value) {
+    return value.trim().split(/\s+/).filter(Boolean).join('+');
+}
 function parseBandcampAlbumUrl(bandcampUrl) {
     const { hostname, pathname } = new URL(bandcampUrl);
     if (hostname !== 'bandcamp.com' && !hostname.endsWith('.bandcamp.com')) {
@@ -50,4 +54,15 @@ async function getBandcampAlbumData(bandcampUrl) {
 }
 async function getBandcampAlbumDetailsFromUrl(bandcampUrl) {
     return getBandcampAlbumDetails(await getBandcampAlbumData(bandcampUrl));
+}
+function composeBandcampSearchUrl(artistName, albumName) {
+    const query = [
+        normalizeBandcampSearchTerm(artistName),
+        normalizeBandcampSearchTerm(albumName),
+    ].filter(Boolean).join('+');
+    const searchParams = new URLSearchParams({
+        q: query,
+        item_type: 'a',
+    });
+    return `https://bandcamp.com/search?${searchParams.toString()}`;
 }

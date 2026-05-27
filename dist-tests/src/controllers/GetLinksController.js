@@ -40,6 +40,7 @@ let GetLinksController = class GetLinksController {
         }
         let albumDetails;
         let spotifyUrl = '';
+        let bandcampUrl;
         let inputSource;
         try {
             inputSource = getUrlSource(url);
@@ -61,6 +62,7 @@ let GetLinksController = class GetLinksController {
         else {
             try {
                 albumDetails = await (0, Bandcamp_1.getBandcampAlbumDetailsFromUrl)(url);
+                bandcampUrl = url;
             }
             catch (error) {
                 this.logger.error('Failed to fetch album from Bandcamp', { error, inputUrl: url });
@@ -77,6 +79,9 @@ let GetLinksController = class GetLinksController {
                     releaseDate: albumDetails.releaseDate,
                 });
             }
+        }
+        if (!bandcampUrl) {
+            bandcampUrl = (0, Bandcamp_1.composeBandcampSearchUrl)(albumDetails.primaryArtistName, albumDetails.albumName);
         }
         let appleMusicUrl;
         try {
@@ -115,6 +120,7 @@ let GetLinksController = class GetLinksController {
         }
         return {
             spotifyUrl,
+            bandcampUrl,
             appleMusicUrl,
             deezerUrl,
             tidalUrl,

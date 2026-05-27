@@ -37,3 +37,6 @@ const bandcampAlbum = {
         releaseDate: '2026-05-15',
     });
 });
+(0, node_test_1.default)('composeBandcampSearchUrl composes a search URL with item_type=a', () => {
+    strict_1.default.equal((0, Bandcamp_1.composeBandcampSearchUrl)('achers', 'bottom of the hill'), 'https://bandcamp.com/search?q=achers%2Bbottom%2Bof%2Bthe%2Bhill&item_type=a');
+});

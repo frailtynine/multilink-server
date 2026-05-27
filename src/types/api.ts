@@ -4,6 +4,7 @@ export interface ErrorResponse {
 
 export interface GetLinksResponse {
     spotifyUrl: string;
+    bandcampUrl: string;
     appleMusicUrl?: string;
     deezerUrl?: string;
     tidalUrl?: string;
