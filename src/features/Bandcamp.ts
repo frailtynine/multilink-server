@@ -8,6 +8,10 @@ export interface BandcampAlbumDetails {
     releaseDate?: string;
 }
 
+function normalizeBandcampSearchTerm(value: string): string {
+    return value.trim().split(/\s+/).filter(Boolean).join('+');
+}
+
 export function parseBandcampAlbumUrl(bandcampUrl: string): string {
     const { hostname, pathname } = new URL(bandcampUrl);
 
@@ -65,4 +69,18 @@ export async function getBandcampAlbumDetailsFromUrl(
     bandcampUrl: string,
 ): Promise<BandcampAlbumDetails> {
     return getBandcampAlbumDetails(await getBandcampAlbumData(bandcampUrl));
+}
+
+export function composeBandcampSearchUrl(artistName: string, albumName: string): string {
+    const query = [
+        normalizeBandcampSearchTerm(artistName),
+        normalizeBandcampSearchTerm(albumName),
+    ].filter(Boolean).join('+');
+
+    const searchParams = new URLSearchParams({
+        q: query,
+        item_type: 'a',
+    });
+
+    return `https://bandcamp.com/search?${searchParams.toString()}`;
 }

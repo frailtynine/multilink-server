@@ -12,6 +12,9 @@
                     "spotifyUrl": {
                         "type": "string"
                     },
+                    "bandcampUrl": {
+                        "type": "string"
+                    },
                     "appleMusicUrl": {
                         "type": "string"
                     },
@@ -33,6 +36,7 @@
                 },
                 "required": [
                     "spotifyUrl",
+                    "bandcampUrl",
                     "imageUrl",
                     "albumName",
                     "artistName"

@@ -1,5 +1,10 @@
 import { AppleMusicFinder } from '../features/AppleMusic';
-import { BandcampAlbumDetails, getBandcampAlbumDetailsFromUrl, parseBandcampAlbumUrl } from '../features/Bandcamp';
+import {
+    BandcampAlbumDetails,
+    composeBandcampSearchUrl,
+    getBandcampAlbumDetailsFromUrl,
+    parseBandcampAlbumUrl,
+} from '../features/Bandcamp';
 import { findSpotifyAlbumUrl, getSpotifyAlbumDetails, getSpotifyData, parseSpotifyId } from '../features/Spotify';
 import { getLogger } from '../logging/logger';
 import { ErrorResponse, GetLinksResponse } from '../types/api';
@@ -40,6 +45,7 @@ export class GetLinksController {
 
         let albumDetails: InputAlbumDetails;
         let spotifyUrl = '';
+        let bandcampUrl: string | undefined;
         let inputSource: 'spotify' | 'bandcamp';
         try {
             inputSource = getUrlSource(url);
@@ -59,6 +65,7 @@ export class GetLinksController {
         } else {
             try {
                 albumDetails = await getBandcampAlbumDetailsFromUrl(url);
+                bandcampUrl = url;
             } catch (error) {
                 this.logger.error('Failed to fetch album from Bandcamp', { error, inputUrl: url });
                 return serverErrorResponse(500, { message: 'Failed to fetch album from Bandcamp' });
@@ -78,6 +85,10 @@ export class GetLinksController {
                     releaseDate: albumDetails.releaseDate,
                 });
             }
+        }
+
+        if (!bandcampUrl) {
+            bandcampUrl = composeBandcampSearchUrl(albumDetails.primaryArtistName, albumDetails.albumName);
         }
 
         let appleMusicUrl: string | undefined;
@@ -128,6 +139,7 @@ export class GetLinksController {
 
         return {
             spotifyUrl,
+            bandcampUrl,
             appleMusicUrl,
             deezerUrl,
             tidalUrl,

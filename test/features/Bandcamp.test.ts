@@ -2,6 +2,7 @@ import assert from 'node:assert/strict';
 import test from 'node:test';
 import { Album } from 'bandcamp-fetch';
 import {
+    composeBandcampSearchUrl,
     getBandcampAlbumDetails,
     normalizeBandcampReleaseDate,
     parseBandcampAlbumUrl,
@@ -44,4 +45,11 @@ test('getBandcampAlbumDetails extracts the fields used by the app', () => {
         imageUrl: 'https://f4.bcbits.com/img/a0056180136_9.jpg',
         releaseDate: '2026-05-15',
     });
+});
+
+test('composeBandcampSearchUrl composes a search URL with item_type=a', () => {
+    assert.equal(
+        composeBandcampSearchUrl('achers', 'bottom of the hill'),
+        'https://bandcamp.com/search?q=achers%2Bbottom%2Bof%2Bthe%2Bhill&item_type=a',
+    );
 });
