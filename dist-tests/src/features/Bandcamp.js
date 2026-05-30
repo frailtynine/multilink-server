@@ -59,7 +59,7 @@ function composeBandcampSearchUrl(artistName, albumName) {
     const query = [
         normalizeBandcampSearchTerm(artistName),
         normalizeBandcampSearchTerm(albumName),
-    ].filter(Boolean).join('+');
+    ].filter(Boolean).join(' ');
     const searchParams = new URLSearchParams({
         q: query,
         item_type: 'a',
