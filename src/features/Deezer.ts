@@ -4,13 +4,10 @@ import {
     DeezerClient,
     DeezerSearchResponse,
 } from '../types/deezer';
+import { findMatchingAlbum } from '../utils/albumMatching';
 
 export function createDeezerClient(): DeezerClient {
     return new DeezerPublicApi();
-}
-
-function normalizeText(value: string): string {
-    return value.replace(/[^a-z0-9]/gi, '').toLowerCase();
 }
 
 export function findMatchingDeezerAlbum(
@@ -18,17 +15,13 @@ export function findMatchingDeezerAlbum(
     requestedAlbumName: string,
     requestedArtistName: string,
 ): DeezerAlbum | undefined {
-    const normalizedAlbumName = normalizeText(requestedAlbumName);
-    const normalizedArtistName = normalizeText(requestedArtistName);
-    const albumMatches = albums.filter((album) => normalizeText(album.title) === normalizedAlbumName);
-    const albumCandidates = albumMatches.length > 0 ? albumMatches : albums;
-    const artistMatches = albumCandidates.filter((album) => {
-        const artistName = album.artist?.name;
-
-        return artistName !== undefined && normalizeText(artistName) === normalizedArtistName;
+    return findMatchingAlbum({
+        albums,
+        requestedAlbumName,
+        requestedArtistName,
+        getAlbumName: (album) => album.title,
+        getArtistName: (album) => album.artist?.name,
     });
-
-    return (artistMatches.length > 0 ? artistMatches : albumCandidates)[0];
 }
 
 export function getDeezerAlbumUrl(album: DeezerAlbum): string {

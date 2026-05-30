@@ -30,8 +30,25 @@ const tidalSearchResponse: TidalSearchResponse = {
     },
     included: [
         {
+            id: 'artist-american-football',
+            type: 'artists',
+            attributes: {
+                name: 'American Football',
+            },
+        },
+        {
             id: '256083091',
             type: 'albums',
+            relationships: {
+                artists: {
+                    data: [
+                        {
+                            id: 'artist-american-football',
+                            type: 'artists',
+                        },
+                    ],
+                },
+            },
             attributes: {
                 title: 'American Football (LP3)',
                 releaseDate: '2019-03-22',
@@ -48,6 +65,16 @@ const tidalSearchResponse: TidalSearchResponse = {
         {
             id: '256098494',
             type: 'albums',
+            relationships: {
+                artists: {
+                    data: [
+                        {
+                            id: 'artist-american-football',
+                            type: 'artists',
+                        },
+                    ],
+                },
+            },
             attributes: {
                 title: 'American Football (LP2)',
                 releaseDate: '2016-10-21',
@@ -64,6 +91,16 @@ const tidalSearchResponse: TidalSearchResponse = {
         {
             id: '487367594',
             type: 'albums',
+            relationships: {
+                artists: {
+                    data: [
+                        {
+                            id: 'artist-american-football',
+                            type: 'artists',
+                        },
+                    ],
+                },
+            },
             attributes: {
                 title: 'American Football (LP4)',
                 releaseDate: '2026-05-01',
@@ -81,16 +118,57 @@ const tidalSearchResponse: TidalSearchResponse = {
 };
 
 test('extractTidalAlbums returns related albums in API order', () => {
-    assert.deepEqual(
-        extractTidalAlbums(tidalSearchResponse).map((album) => album.id),
-        ['487367594', '256083091', '256098494'],
+    const albums = extractTidalAlbums(tidalSearchResponse);
+
+    assert.deepEqual(albums.map((album) => album.id), ['487367594', '256083091', '256098494']);
+    assert.deepEqual(albums[0].artistNames, ['American Football']);
+});
+
+test('findMatchingTidalAlbum returns undefined when artist does not match', () => {
+    const matchingAlbum = findMatchingTidalAlbum(
+        extractTidalAlbums(tidalSearchResponse),
+        'American Football (LP4)',
+        'Wrong Artist',
+        '2026-05-01',
     );
+
+    assert.equal(matchingAlbum, undefined);
+});
+
+test('findMatchingTidalAlbum uses fallback included artists when album relationships are absent', () => {
+    const matchingAlbum = findMatchingTidalAlbum(
+        [
+            {
+                id: '524824527',
+                type: 'albums',
+                attributes: {
+                    title: 'LOOKING FOR PEOPLE TO UNFOLLOW',
+                    releaseDate: '2026-05-22',
+                    externalLinks: [
+                        {
+                            href: 'https://tidal.com/browse/album/524824527',
+                            meta: {
+                                type: 'TIDAL_SHARING',
+                            },
+                        },
+                    ],
+                },
+                artistNames: ['Ecca Vandal'],
+            },
+        ],
+        'LOOKING FOR PEOPLE TO UNFOLLOW',
+        'Ecca Vandal',
+        '2026-05-22',
+    );
+
+    assert.equal(matchingAlbum?.id, '524824527');
 });
 
 test('findMatchingTidalAlbum matches the requested album by title and release date', () => {
     const matchingAlbum = findMatchingTidalAlbum(
         extractTidalAlbums(tidalSearchResponse),
         'American Football (LP4)',
+        'American Football',
         '2026-05-01',
     );
 
@@ -101,6 +179,7 @@ test('getTidalAlbumUrl prefers the TIDAL_SHARING external link', () => {
     const matchingAlbum = findMatchingTidalAlbum(
         extractTidalAlbums(tidalSearchResponse),
         'American Football (LP4)',
+        'American Football',
         '2026-05-01',
     );
 
@@ -141,7 +220,7 @@ test('getTidalUrl authenticates with Tidal and returns the matched album URL', a
 
             assert.equal(
                 url,
-                'https://openapi.tidal.com/v2/searchResults/American%20Football%20American%20Football%20(LP4)?include=albums&countryCode=US&explicitFilter=INCLUDE',
+                'https://openapi.tidal.com/v2/searchResults/American%20Football%20American%20Football%20(LP4)?include=albums%2Cartists&countryCode=US&explicitFilter=INCLUDE',
             );
             assert.deepEqual(init, {
                 method: 'GET',

@@ -4,8 +4,7 @@ import {
     AppleMusicSearchResponse,
     AppleMusicSearchResultContainer,
 } from '../types/appleMusic';
-
-const SEVEN_DAYS_IN_MILLISECONDS = 7 * 24 * 60 * 60 * 1000;
+import { findMatchingAlbum } from '../utils/albumMatching';
 
 export interface AppleMusicClient {
     init(): Promise<void>;
@@ -18,21 +17,22 @@ export interface AppleMusicClient {
     };
 }
 
-export function createAppleMusicClient(): AppleMusicClient {
-    return new AppleMusic({
-        region: Region.RU,
-        authType: AuthType.Scraped,
-    });
-}
+function resolveAppleMusicRegion(): Region {
+    const configuredRegion = process.env.APPLE_MUSIC_REGION?.toLowerCase();
+    const supportedRegions = new Set<string>(Object.values(Region));
 
-function parseSpotifyReleaseDate(spotifyReleaseDate: string): number | undefined {
-    if (!/^\d{4}-\d{2}-\d{2}$/.test(spotifyReleaseDate)) {
-        return undefined;
+    if (configuredRegion && supportedRegions.has(configuredRegion)) {
+        return configuredRegion as Region;
     }
 
-    const timestamp = Date.parse(`${spotifyReleaseDate}T00:00:00Z`);
+    return Region.US;
+}
 
-    return Number.isNaN(timestamp) ? undefined : timestamp;
+export function createAppleMusicClient(): AppleMusicClient {
+    return new AppleMusic({
+        region: resolveAppleMusicRegion(),
+        authType: AuthType.Scraped,
+    });
 }
 
 export function extractAppleMusicAlbums(
@@ -45,39 +45,20 @@ export function extractAppleMusicAlbums(
 
 export function findMatchingAppleMusicAlbum(
     results: AppleMusicAlbumResult[],
+    requestedAlbumName: string,
+    requestedArtistName: string,
     spotifyReleaseDate: string,
 ): AppleMusicAlbumResult | undefined {
-    const spotifyReleaseTimestamp = parseSpotifyReleaseDate(spotifyReleaseDate);
-
-    if (spotifyReleaseTimestamp === undefined) {
-        return undefined;
-    }
-
-    let bestMatch: AppleMusicAlbumResult | undefined;
-    let bestDifference = Number.POSITIVE_INFINITY;
-
-    for (const result of results) {
-        const releaseDate = result.attributes.releaseDate;
-
-        if (!releaseDate) {
-            continue;
-        }
-
-        const appleMusicReleaseTimestamp = Date.parse(releaseDate);
-
-        if (Number.isNaN(appleMusicReleaseTimestamp)) {
-            continue;
-        }
-
-        const difference = Math.abs(appleMusicReleaseTimestamp - spotifyReleaseTimestamp);
-
-        if (difference <= SEVEN_DAYS_IN_MILLISECONDS && difference < bestDifference) {
-            bestMatch = result;
-            bestDifference = difference;
-        }
-    }
-
-    return bestMatch;
+    return findMatchingAlbum({
+        albums: results,
+        requestedAlbumName,
+        requestedArtistName,
+        requestedReleaseDate: spotifyReleaseDate,
+        getAlbumName: (album) => album.attributes.name,
+        getArtistName: (album) => album.attributes.artistName,
+        getReleaseDate: (album) => album.attributes.releaseDate,
+        requireReleaseDateMatch: true,
+    });
 }
 
 const getAppleMusicData = async (
@@ -103,7 +84,7 @@ const AppleMusicFinder = async (
     const searchResults = await getAppleMusicData(artistName, albumName, client);
     const albums = extractAppleMusicAlbums(searchResults);
     const matchingAlbum = spotifyReleaseDate
-        ? findMatchingAppleMusicAlbum(albums, spotifyReleaseDate)
+        ? findMatchingAppleMusicAlbum(albums, albumName, artistName, spotifyReleaseDate)
         : albums[0];
 
     if (!matchingAlbum) {

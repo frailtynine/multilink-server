@@ -5,22 +5,18 @@ exports.findMatchingDeezerAlbum = findMatchingDeezerAlbum;
 exports.getDeezerAlbumUrl = getDeezerAlbumUrl;
 exports.searchDeezerAlbums = searchDeezerAlbums;
 const deezer_public_api_1 = require("deezer-public-api");
+const albumMatching_1 = require("../utils/albumMatching");
 function createDeezerClient() {
     return new deezer_public_api_1.DeezerPublicApi();
 }
-function normalizeText(value) {
-    return value.replace(/[^a-z0-9]/gi, '').toLowerCase();
-}
 function findMatchingDeezerAlbum(albums, requestedAlbumName, requestedArtistName) {
-    const normalizedAlbumName = normalizeText(requestedAlbumName);
-    const normalizedArtistName = normalizeText(requestedArtistName);
-    const albumMatches = albums.filter((album) => normalizeText(album.title) === normalizedAlbumName);
-    const albumCandidates = albumMatches.length > 0 ? albumMatches : albums;
-    const artistMatches = albumCandidates.filter((album) => {
-        const artistName = album.artist?.name;
-        return artistName !== undefined && normalizeText(artistName) === normalizedArtistName;
+    return (0, albumMatching_1.findMatchingAlbum)({
+        albums,
+        requestedAlbumName,
+        requestedArtistName,
+        getAlbumName: (album) => album.title,
+        getArtistName: (album) => album.artist?.name,
     });
-    return (artistMatches.length > 0 ? artistMatches : albumCandidates)[0];
 }
 function getDeezerAlbumUrl(album) {
     return album.link;

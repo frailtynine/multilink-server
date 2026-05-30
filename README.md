@@ -54,6 +54,7 @@ Create a `.env` file on the deployment host with the values your runtime needs:
 | `PORT` | No | Defaults to `3000` inside the container |
 | `EXTERNAL_PORT` | No | Host port mapped to container port 3000 |
 | `API_TOKEN` | Yes | Required for authenticated API access |
+| `APPLE_MUSIC_REGION` | No | Apple Music storefront region code (for example `us`, `ru`). Defaults to `us` |
 | `TIDAL_CLIENT_ID` | Yes | Required for Tidal lookups |
 | `TIDAL_CLIENT_SECRET` | Yes | Required for Tidal lookups |
 | `LOG_LEVEL` | No | Defaults to `INFO` |

@@ -6,8 +6,10 @@ export interface TidalSearchResponse {
             };
         };
     };
-    included?: TidalAlbum[];
+    included?: TidalIncludedResource[];
 }
+
+export type TidalIncludedResource = TidalAlbum | TidalArtist;
 
 export interface TidalAlbumRelationship {
     id: string;
@@ -17,10 +19,24 @@ export interface TidalAlbumRelationship {
 export interface TidalAlbum {
     id: string;
     type: string;
+    relationships?: {
+        artists?: {
+            data?: TidalAlbumRelationship[];
+        };
+    };
     attributes?: {
         title?: string;
         releaseDate?: string;
         externalLinks?: TidalAlbumExternalLink[];
+    };
+    artistNames?: string[];
+}
+
+export interface TidalArtist {
+    id: string;
+    type: string;
+    attributes?: {
+        name?: string;
     };
 }
 

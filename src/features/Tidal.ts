@@ -1,9 +1,19 @@
 import { releaseDatesMatch } from '../utils/releaseDate';
+import { findMatchingAlbum } from '../utils/albumMatching';
 import {
     TidalAlbum,
-    TidalAlbumRelationship,
+    TidalArtist,
+    TidalIncludedResource,
     TidalSearchResponse,
 } from '../types/tidal';
+
+interface TidalAlbumCandidate {
+    album: TidalAlbum;
+    albumName: string;
+    artistNames: string[];
+    releaseDate?: string;
+    url?: string;
+}
 
 function getTidalCredentials(): { clientId: string; clientSecret: string } {
     const clientId = process.env.TIDAL_CLIENT_ID;
@@ -48,62 +58,12 @@ async function getAccessToken(): Promise<string> {
     return payload.access_token;
 }
 
-function normalizeAlbumTitle(title: string): string {
-    return title.replace(/[^a-z0-9]/gi, '').toLowerCase();
-}
-
-function isAlbumRelationship(relationship: TidalAlbumRelationship): boolean {
-    return relationship.type === 'albums';
-}
-
-function isAlbum(result: TidalAlbum): boolean {
+function isAlbum(result: TidalIncludedResource): result is TidalAlbum {
     return result.type === 'albums';
 }
 
-export function extractTidalAlbums(searchResponse: TidalSearchResponse): TidalAlbum[] {
-    const relatedAlbumIds = searchResponse.data?.relationships?.albums?.data
-        ?.filter(isAlbumRelationship)
-        .map(({ id }) => id) ?? [];
-
-    const includedAlbums = (searchResponse.included ?? []).filter(isAlbum);
-
-    if (relatedAlbumIds.length === 0) {
-        return includedAlbums;
-    }
-
-    const albumsById = new Map(includedAlbums.map((album) => [album.id, album]));
-
-    return relatedAlbumIds
-        .map((albumId) => albumsById.get(albumId))
-        .filter((album): album is TidalAlbum => album !== undefined);
-}
-
-export function findMatchingTidalAlbum(
-    albums: TidalAlbum[],
-    requestedAlbumName: string,
-    spotifyReleaseDate?: string,
-): TidalAlbum | undefined {
-    const normalizedRequestedAlbumName = normalizeAlbumTitle(requestedAlbumName);
-    const albumsWithMatchingTitle = albums.filter((album) => {
-        const albumTitle = album.attributes?.title;
-
-        return albumTitle !== undefined && normalizeAlbumTitle(albumTitle) === normalizedRequestedAlbumName;
-    });
-    const titleCandidates = albumsWithMatchingTitle.length > 0 ? albumsWithMatchingTitle : albums;
-
-    if (spotifyReleaseDate) {
-        const albumWithMatchingReleaseDate = titleCandidates.find((album) => {
-            const releaseDate = album.attributes?.releaseDate;
-
-            return releaseDate !== undefined && releaseDatesMatch(spotifyReleaseDate, releaseDate);
-        });
-
-        if (albumWithMatchingReleaseDate) {
-            return albumWithMatchingReleaseDate;
-        }
-    }
-
-    return titleCandidates[0];
+function isArtist(result: TidalIncludedResource): result is TidalArtist {
+    return result.type === 'artists';
 }
 
 export function getTidalAlbumUrl(album: TidalAlbum): string | undefined {
@@ -113,15 +73,85 @@ export function getTidalAlbumUrl(album: TidalAlbum): string | undefined {
     return tidalSharingLink?.href ?? externalLinks[0]?.href;
 }
 
-async function searchTidalAlbums(
+function mapTidalCandidates(searchResponse: TidalSearchResponse): TidalAlbumCandidate[] {
+    const includedResources = searchResponse.included ?? [];
+    const includedAlbums = includedResources.filter(isAlbum);
+    const artistsById = new Map(
+        includedResources
+            .filter(isArtist)
+            .map((artist) => [artist.id, artist.attributes?.name]),
+    );
+    const fallbackArtistNames = Array.from(artistsById.values()).filter(
+        (artistName): artistName is string => Boolean(artistName),
+    );
+
+    const orderedAlbumIds = (searchResponse.data?.relationships?.albums?.data ?? [])
+        .filter((relationship) => relationship.type === 'albums')
+        .map((relationship) => relationship.id);
+    const albumsToMap = orderedAlbumIds.length > 0
+        ? orderedAlbumIds
+            .map((albumId) => includedAlbums.find((album) => album.id === albumId))
+            .filter((album): album is TidalAlbum => album !== undefined)
+        : includedAlbums;
+
+    return albumsToMap.map((album) => {
+        const relatedArtistIds = album.relationships?.artists?.data
+            ?.filter((relationship) => relationship.type === 'artists')
+            .map((relationship) => relationship.id) ?? [];
+        const relationshipArtistNames = relatedArtistIds
+            .map((artistId) => artistsById.get(artistId))
+            .filter((artistName): artistName is string => Boolean(artistName));
+        const artistNames = relationshipArtistNames.length > 0
+            ? relationshipArtistNames
+            : fallbackArtistNames;
+
+        return {
+            album: {
+                ...album,
+                artistNames,
+            },
+            albumName: album.attributes?.title ?? '',
+            artistNames,
+            releaseDate: album.attributes?.releaseDate,
+            url: getTidalAlbumUrl(album),
+        };
+    });
+}
+
+export function extractTidalAlbums(searchResponse: TidalSearchResponse): TidalAlbum[] {
+    return mapTidalCandidates(searchResponse).map((candidate) => candidate.album);
+}
+
+export function findMatchingTidalAlbum(
+    albums: TidalAlbum[],
+    requestedAlbumName: string,
+    requestedArtistName: string,
+    spotifyReleaseDate?: string,
+): TidalAlbum | undefined {
+    const matchingAlbum = findMatchingAlbum({
+        albums,
+        requestedAlbumName,
+        requestedArtistName,
+        requestedReleaseDate: spotifyReleaseDate,
+        getAlbumName: (album) => album.attributes?.title,
+        getArtistName: (album) => album.artistNames?.join(', '),
+        getReleaseDate: (album) => album.attributes?.releaseDate,
+        matchesReleaseDate: releaseDatesMatch,
+        requireReleaseDateMatch: true,
+    });
+
+    return matchingAlbum;
+}
+
+async function searchTidalCandidates(
     accessToken: string,
     albumName: string,
     artistName: string,
-): Promise<TidalAlbum[]> {
+): Promise<TidalAlbumCandidate[]> {
     const query = `${artistName} ${albumName}`;
     const searchUrl = new URL(`https://openapi.tidal.com/v2/searchResults/${encodeURIComponent(query)}`);
 
-    searchUrl.searchParams.set('include', 'albums');
+    searchUrl.searchParams.set('include', 'albums,artists');
     searchUrl.searchParams.set('countryCode', 'US');
     searchUrl.searchParams.set('explicitFilter', 'INCLUDE');
 
@@ -139,7 +169,7 @@ async function searchTidalAlbums(
 
     const payload = await response.json() as TidalSearchResponse;
 
-    return extractTidalAlbums(payload);
+    return mapTidalCandidates(payload);
 }
 
 async function getTidalUrl(
@@ -148,9 +178,19 @@ async function getTidalUrl(
     spotifyReleaseDate?: string,
 ): Promise<string> {
     const accessToken = await getAccessToken();
-    const albums = await searchTidalAlbums(accessToken, albumName, artistName);
-    const matchingAlbum = findMatchingTidalAlbum(albums, albumName, spotifyReleaseDate);
-    const tidalUrl = matchingAlbum ? getTidalAlbumUrl(matchingAlbum) : undefined;
+    const candidates = await searchTidalCandidates(accessToken, albumName, artistName);
+    const matchingCandidate = findMatchingAlbum({
+        albums: candidates,
+        requestedAlbumName: albumName,
+        requestedArtistName: artistName,
+        requestedReleaseDate: spotifyReleaseDate,
+        getAlbumName: (candidate) => candidate.albumName,
+        getArtistName: (candidate) => candidate.artistNames.join(', '),
+        getReleaseDate: (candidate) => candidate.releaseDate,
+        matchesReleaseDate: releaseDatesMatch,
+        requireReleaseDateMatch: true,
+    });
+    const tidalUrl = matchingCandidate?.url;
 
     if (!tidalUrl) {
         throw new Error('Album not found on Tidal');
