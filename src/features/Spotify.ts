@@ -1,7 +1,7 @@
 import dotenv from "dotenv";
 import { Spotifly } from "@manhgdev/spotifyweb";
 import { getLogger } from "../logging/logger";
-import { releaseDatesMatch } from "../utils/releaseDate";
+import { findMatchingAlbum } from '../utils/albumMatching';
 import {
     SpotifyAlbumData,
     SpotifyAlbumDetails,
@@ -32,10 +32,6 @@ export function parseSpotifyId(spotifyUrl: string): string {
     }
 
     return spotifyId;
-}
-
-function normalizeText(value: string): string {
-    return value.replace(/[^a-z0-9]/gi, '').toLowerCase();
 }
 
 function getSpotifyIdFromUri(uri: string): string {
@@ -120,40 +116,21 @@ export function findMatchingSpotifyAlbum(
     requestedArtistName: string,
     requestedReleaseDate?: string,
 ): SpotifySearchAlbumItem | undefined {
-    const normalizedRequestedAlbumName = normalizeText(requestedAlbumName);
-    const normalizedRequestedArtistName = normalizeText(requestedArtistName);
+    return findMatchingAlbum({
+        albums,
+        requestedAlbumName,
+        requestedArtistName,
+        requestedReleaseDate,
+        getAlbumName: (album) => album.data.name,
+        getArtistName: (album) => album.data.artists.items[0]?.profile.name,
+        getReleaseDate: (album) => `${album.data.date.year}`,
+        requireReleaseDateMatch: true,
+        matchesReleaseDate: (requestedDate, candidateYear) => {
+            const requestedYear = requestedDate.slice(0, 4);
 
-    let bestMatch: SpotifySearchAlbumItem | undefined;
-    let bestScore = Number.NEGATIVE_INFINITY;
-
-    for (const album of albums) {
-        const albumData = album.data;
-        const normalizedAlbumName = normalizeText(albumData.name);
-        const normalizedPrimaryArtistName = normalizeText(albumData.artists.items[0]?.profile.name ?? '');
-        let score = 0;
-
-        if (normalizedAlbumName === normalizedRequestedAlbumName) {
-            score += 4;
-        }
-
-        if (normalizedPrimaryArtistName === normalizedRequestedArtistName) {
-            score += 3;
-        }
-
-        if (
-            requestedReleaseDate &&
-            releaseDatesMatch(requestedReleaseDate, `${albumData.date.year}`)
-        ) {
-            score += 2;
-        }
-
-        if (score > bestScore) {
-            bestMatch = album;
-            bestScore = score;
-        }
-    }
-
-    return bestMatch;
+            return requestedYear.length === 4 && candidateYear === requestedYear;
+        },
+    });
 }
 
 export async function searchSpotifyAlbums(
@@ -183,6 +160,11 @@ export async function findSpotifyAlbumUrl(
     if (!matchingAlbum) {
         throw new Error('Album not found on Spotify');
     }
+    console.log('Found matching Spotify album', {
+        albumName: matchingAlbum.data.name,
+        artistName: matchingAlbum.data.artists.items[0]?.profile.name,
+        releaseDate: matchingAlbum.data.date.year,
+    });
 
     return getSpotifyAlbumUrlFromSearchResult(matchingAlbum);
 }

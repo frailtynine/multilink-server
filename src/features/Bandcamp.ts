@@ -75,7 +75,7 @@ export function composeBandcampSearchUrl(artistName: string, albumName: string):
     const query = [
         normalizeBandcampSearchTerm(artistName),
         normalizeBandcampSearchTerm(albumName),
-    ].filter(Boolean).join('+');
+    ].filter(Boolean).join(' ');
 
     const searchParams = new URLSearchParams({
         q: query,

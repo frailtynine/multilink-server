@@ -16,7 +16,7 @@ exports.findSpotifyAlbumUrl = findSpotifyAlbumUrl;
 const dotenv_1 = __importDefault(require("dotenv"));
 const spotifyweb_1 = require("@manhgdev/spotifyweb");
 const logger_1 = require("../logging/logger");
-const releaseDate_1 = require("../utils/releaseDate");
+const albumMatching_1 = require("../utils/albumMatching");
 dotenv_1.default.config();
 const logger = (0, logger_1.getLogger)('spotify');
 function parseSpotifyId(spotifyUrl) {
@@ -33,9 +33,6 @@ function parseSpotifyId(spotifyUrl) {
         throw new Error('Invalid Spotify URL');
     }
     return spotifyId;
-}
-function normalizeText(value) {
-    return value.replace(/[^a-z0-9]/gi, '').toLowerCase();
 }
 function getSpotifyIdFromUri(uri) {
     const spotifyId = uri.split(':').pop();
@@ -97,31 +94,20 @@ function getSpotifyAlbumDetails(spotifyData) {
     };
 }
 function findMatchingSpotifyAlbum(albums, requestedAlbumName, requestedArtistName, requestedReleaseDate) {
-    const normalizedRequestedAlbumName = normalizeText(requestedAlbumName);
-    const normalizedRequestedArtistName = normalizeText(requestedArtistName);
-    let bestMatch;
-    let bestScore = Number.NEGATIVE_INFINITY;
-    for (const album of albums) {
-        const albumData = album.data;
-        const normalizedAlbumName = normalizeText(albumData.name);
-        const normalizedPrimaryArtistName = normalizeText(albumData.artists.items[0]?.profile.name ?? '');
-        let score = 0;
-        if (normalizedAlbumName === normalizedRequestedAlbumName) {
-            score += 4;
-        }
-        if (normalizedPrimaryArtistName === normalizedRequestedArtistName) {
-            score += 3;
-        }
-        if (requestedReleaseDate &&
-            (0, releaseDate_1.releaseDatesMatch)(requestedReleaseDate, `${albumData.date.year}`)) {
-            score += 2;
-        }
-        if (score > bestScore) {
-            bestMatch = album;
-            bestScore = score;
-        }
-    }
-    return bestMatch;
+    return (0, albumMatching_1.findMatchingAlbum)({
+        albums,
+        requestedAlbumName,
+        requestedArtistName,
+        requestedReleaseDate,
+        getAlbumName: (album) => album.data.name,
+        getArtistName: (album) => album.data.artists.items[0]?.profile.name,
+        getReleaseDate: (album) => `${album.data.date.year}`,
+        requireReleaseDateMatch: true,
+        matchesReleaseDate: (requestedDate, candidateYear) => {
+            const requestedYear = requestedDate.slice(0, 4);
+            return requestedYear.length === 4 && candidateYear === requestedYear;
+        },
+    });
 }
 async function searchSpotifyAlbums(albumName, artistName, client = createSpotifyClient()) {
     const searchResults = await client.searchAlbums(`${artistName} ${albumName}`, 10);
@@ -133,6 +119,11 @@ async function findSpotifyAlbumUrl(albumName, artistName, releaseDate, client = 
     if (!matchingAlbum) {
         throw new Error('Album not found on Spotify');
     }
+    console.log('Found matching Spotify album', {
+        albumName: matchingAlbum.data.name,
+        artistName: matchingAlbum.data.artists.items[0]?.profile.name,
+        releaseDate: matchingAlbum.data.date.year,
+    });
     return getSpotifyAlbumUrlFromSearchResult(matchingAlbum);
 }
 const getSpotifyData = async (spotifyUrl, client = createSpotifyClient()) => {

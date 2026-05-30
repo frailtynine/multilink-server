@@ -49,12 +49,17 @@ test('extractAppleMusicAlbums returns albums from searchResults', () => {
 });
 
 test('findMatchingAppleMusicAlbum returns the album with the matching Spotify release date', () => {
-    const matchingAlbum = findMatchingAppleMusicAlbum(appleMusicAlbums, '2026-05-01');
+    const matchingAlbum = findMatchingAppleMusicAlbum(
+        appleMusicAlbums,
+        'American Football (LP4)',
+        'American Football',
+        '2026-05-01',
+    );
 
     assert.deepEqual(matchingAlbum, appleMusicAlbums[1]);
 });
 
-test('findMatchingAppleMusicAlbum returns the closest album within seven days of the Spotify release date', () => {
+test('findMatchingAppleMusicAlbum matches within seven days of requested release date', () => {
     const matchingAlbum = findMatchingAppleMusicAlbum(
         [
             {
@@ -63,7 +68,7 @@ test('findMatchingAppleMusicAlbum returns the closest album within seven days of
                 href: '/v1/catalog/ru/albums/near',
                 attributes: {
                     artistName: 'American Football',
-                    name: 'Near',
+                    name: 'American Football (LP4)',
                     releaseDate: '2026-05-03',
                     url: 'https://music.apple.com/ru/album/near',
                 },
@@ -74,12 +79,14 @@ test('findMatchingAppleMusicAlbum returns the closest album within seven days of
                 href: '/v1/catalog/ru/albums/farther',
                 attributes: {
                     artistName: 'American Football',
-                    name: 'Farther',
+                    name: 'American Football (LP4) Extended',
                     releaseDate: '2026-05-07',
                     url: 'https://music.apple.com/ru/album/farther',
                 },
             },
         ],
+        'American Football (LP4)',
+        'American Football',
         '2026-05-01',
     );
 
@@ -89,7 +96,7 @@ test('findMatchingAppleMusicAlbum returns the closest album within seven days of
         href: '/v1/catalog/ru/albums/near',
         attributes: {
             artistName: 'American Football',
-            name: 'Near',
+            name: 'American Football (LP4)',
             releaseDate: '2026-05-03',
             url: 'https://music.apple.com/ru/album/near',
         },
@@ -97,15 +104,25 @@ test('findMatchingAppleMusicAlbum returns the closest album within seven days of
 });
 
 test('findMatchingAppleMusicAlbum does not match albums more than seven days away', () => {
-    const matchingAlbum = findMatchingAppleMusicAlbum(appleMusicAlbums, '2026-05-20');
+    const matchingAlbum = findMatchingAppleMusicAlbum(
+        appleMusicAlbums,
+        'American Football (LP4)',
+        'American Football',
+        '2026-05-20',
+    );
 
     assert.equal(matchingAlbum, undefined);
 });
 
-test('findMatchingAppleMusicAlbum returns undefined when Spotify release date has no day precision', () => {
-    const matchingAlbum = findMatchingAppleMusicAlbum(appleMusicAlbums, '2026-05');
+test('findMatchingAppleMusicAlbum matches by release date prefix for month precision', () => {
+    const matchingAlbum = findMatchingAppleMusicAlbum(
+        appleMusicAlbums,
+        'American Football (LP4)',
+        'American Football',
+        '2026-05',
+    );
 
-    assert.equal(matchingAlbum, undefined);
+    assert.deepEqual(matchingAlbum, appleMusicAlbums[1]);
 });
 
 test('getAppleMusicData uses the new album search client', async () => {

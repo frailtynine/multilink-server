@@ -177,6 +177,90 @@ const spotifySearchAlbumsResponse = {
     const matchingAlbum = (0, Spotify_1.findMatchingSpotifyAlbum)(spotifySearchAlbumsResponse.data.searchV2.albums.items, 'Graceful', 'Touch Girl Apple Blossom', '2026-05-15');
     strict_1.default.deepEqual(matchingAlbum, spotifySearchAlbumsResponse.data.searchV2.albums.items[0]);
 });
+(0, node_test_1.default)('findMatchingSpotifyAlbum returns undefined when no candidate matches album or artist', () => {
+    const matchingAlbum = (0, Spotify_1.findMatchingSpotifyAlbum)([
+        {
+            data: {
+                __typename: 'Album',
+                uri: 'spotify:album:irrelevant',
+                name: 'Absolutely Different',
+                artists: {
+                    items: [
+                        {
+                            uri: 'spotify:artist:irrelevant',
+                            profile: {
+                                name: 'Completely Different Artist',
+                            },
+                        },
+                    ],
+                },
+                coverArt: {
+                    sources: [],
+                },
+                date: {
+                    year: 2026,
+                },
+            },
+        },
+    ], 'Graceful', 'Touch Girl Apple Blossom', '2026-05-15');
+    strict_1.default.equal(matchingAlbum, undefined);
+});
+(0, node_test_1.default)('findMatchingSpotifyAlbum returns undefined when only album name matches', () => {
+    const matchingAlbum = (0, Spotify_1.findMatchingSpotifyAlbum)([
+        {
+            data: {
+                __typename: 'Album',
+                uri: 'spotify:album:album-only-match',
+                name: 'Graceful',
+                artists: {
+                    items: [
+                        {
+                            uri: 'spotify:artist:wrong',
+                            profile: {
+                                name: 'Another Artist',
+                            },
+                        },
+                    ],
+                },
+                coverArt: {
+                    sources: [],
+                },
+                date: {
+                    year: 2030,
+                },
+            },
+        },
+    ], 'Graceful', 'Touch Girl Apple Blossom', '2026-05-15');
+    strict_1.default.equal(matchingAlbum, undefined);
+});
+(0, node_test_1.default)('findMatchingSpotifyAlbum matches when album and artist names contain each other', () => {
+    const matchingAlbum = (0, Spotify_1.findMatchingSpotifyAlbum)([
+        {
+            data: {
+                __typename: 'Album',
+                uri: 'spotify:album:contains-match',
+                name: 'Bottom of the Hill (Deluxe Edition)',
+                artists: {
+                    items: [
+                        {
+                            uri: 'spotify:artist:contains-match',
+                            profile: {
+                                name: 'Achers, Guest Vocalist',
+                            },
+                        },
+                    ],
+                },
+                coverArt: {
+                    sources: [],
+                },
+                date: {
+                    year: 2026,
+                },
+            },
+        },
+    ], 'Bottom of the Hill', 'Achers', '2026-05-15');
+    strict_1.default.equal(matchingAlbum?.data.uri, 'spotify:album:contains-match');
+});
 (0, node_test_1.default)('findSpotifyAlbumUrl returns a canonical album URL from search results', async () => {
     let requestedTerms;
     let requestedLimit;
