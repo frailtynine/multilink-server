@@ -13,6 +13,13 @@ exports.getSpotifyAlbumDetails = getSpotifyAlbumDetails;
 exports.findMatchingSpotifyAlbum = findMatchingSpotifyAlbum;
 exports.searchSpotifyAlbums = searchSpotifyAlbums;
 exports.findSpotifyAlbumUrl = findSpotifyAlbumUrl;
+exports.parseSpotifyTrackId = parseSpotifyTrackId;
+exports.getSpotifyTrackData = getSpotifyTrackData;
+exports.getSpotifyTrackDetails = getSpotifyTrackDetails;
+exports.getSpotifyTrackUrlFromSearchResult = getSpotifyTrackUrlFromSearchResult;
+exports.findMatchingSpotifyTrack = findMatchingSpotifyTrack;
+exports.searchSpotifyTracks = searchSpotifyTracks;
+exports.findSpotifyTrackUrl = findSpotifyTrackUrl;
 const dotenv_1 = __importDefault(require("dotenv"));
 const spotifyweb_1 = require("@manhgdev/spotifyweb");
 const logger_1 = require("../logging/logger");
@@ -137,3 +144,104 @@ const getSpotifyData = async (spotifyUrl, client = createSpotifyClient()) => {
     }
 };
 exports.getSpotifyData = getSpotifyData;
+function parseSpotifyTrackId(spotifyUrl) {
+    const { hostname, pathname } = new URL(spotifyUrl);
+    if (hostname !== 'open.spotify.com') {
+        throw new Error('Invalid Spotify URL');
+    }
+    const pathSegments = pathname.split('/').filter(Boolean);
+    if (pathSegments[0] !== 'track') {
+        throw new Error('Invalid Spotify URL');
+    }
+    const spotifyId = pathSegments[1];
+    if (!spotifyId) {
+        throw new Error('Invalid Spotify URL');
+    }
+    return spotifyId;
+}
+async function getSpotifyTrackData(spotifyUrl, client = createSpotifyClient()) {
+    const spotifyId = parseSpotifyTrackId(spotifyUrl);
+    try {
+        return await client.getTrack(spotifyId);
+    }
+    catch (error) {
+        logger.error('Failed to fetch Spotify track data', { error, spotifyId });
+        throw new Error('Failed to fetch Spotify track data');
+    }
+}
+function getSpotifyTrackDetails(trackData) {
+    const trackUnion = trackData.data?.trackUnion;
+    if (!trackUnion) {
+        throw new Error('Spotify response did not include a track');
+    }
+    const artistNames = trackUnion.artistsWithRoles.items
+        .map((item) => item.artist.profile.name)
+        .filter((name) => name.length > 0);
+    const primaryArtistName = artistNames[0];
+    if (!primaryArtistName) {
+        throw new Error('Spotify track is missing artists');
+    }
+    const imageUrl = trackUnion.albumOfTrack.coverArt.sources[0]?.url ?? '';
+    const { isoString, precision } = trackUnion.albumOfTrack.date;
+    let releaseDate;
+    switch (precision.toUpperCase()) {
+        case 'DAY':
+            releaseDate = isoString.slice(0, 10);
+            break;
+        case 'MONTH':
+            releaseDate = isoString.slice(0, 7);
+            break;
+        case 'YEAR':
+            releaseDate = isoString.slice(0, 4);
+            break;
+        default:
+            releaseDate = isoString;
+    }
+    return {
+        spotifyUrl: trackUnion.sharingInfo.shareUrl,
+        trackName: trackUnion.name,
+        albumName: trackUnion.albumOfTrack.name,
+        artistName: artistNames.join(', '),
+        primaryArtistName,
+        imageUrl,
+        releaseDate,
+    };
+}
+function getSpotifyTrackUrlFromSearchResult(track) {
+    return `https://open.spotify.com/track/${getSpotifyIdFromUri(track.item.data.uri)}`;
+}
+function findMatchingSpotifyTrack(tracks, requestedTrackName, requestedArtistName) {
+    const normalizedRequestedTrackName = (0, albumMatching_1.normalizeText)(requestedTrackName);
+    const normalizedRequestedArtistName = (0, albumMatching_1.normalizeText)(requestedArtistName);
+    let bestMatch;
+    let bestScore = Number.NEGATIVE_INFINITY;
+    for (const track of tracks) {
+        const trackData = track.item.data;
+        const normalizedTrackName = (0, albumMatching_1.normalizeText)(trackData.name);
+        const normalizedPrimaryArtistName = (0, albumMatching_1.normalizeText)(trackData.artists.items[0]?.profile.name ?? '');
+        let score = 0;
+        if (normalizedTrackName === normalizedRequestedTrackName) {
+            score += 4;
+        }
+        if (normalizedPrimaryArtistName === normalizedRequestedArtistName) {
+            score += 3;
+        }
+        if (score > bestScore) {
+            bestMatch = track;
+            bestScore = score;
+        }
+    }
+    return bestMatch;
+}
+async function searchSpotifyTracks(trackName, artistName, client = createSpotifyClient()) {
+    return client.searchTracks(`${artistName} ${trackName}`, 10);
+}
+async function findSpotifyTrackUrl(trackName, artistName, client = createSpotifyClient()) {
+    const searchResults = await searchSpotifyTracks(trackName, artistName, client);
+    const tracks = searchResults.data.searchV2.tracksV2.items;
+    const matchingTrack = findMatchingSpotifyTrack(tracks, trackName, artistName);
+    if (!matchingTrack) {
+        throw new Error('Track not found on Spotify');
+    }
+    return getSpotifyTrackUrlFromSearchResult(matchingTrack);
+}

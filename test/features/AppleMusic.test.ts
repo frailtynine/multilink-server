@@ -1,12 +1,15 @@
 import assert from 'node:assert/strict';
 import test from 'node:test';
+import { ResourceType } from '@syncfm/applemusic-api';
 import {
     AppleMusicFinder,
     extractAppleMusicAlbums,
+    extractAppleMusicSongs,
     findMatchingAppleMusicAlbum,
-    getAppleMusicData,
+    findMatchingAppleMusicSong,
+    searchAppleMusic,
 } from '../../src/features/AppleMusic';
-import { AppleMusicAlbumResult, AppleMusicSearchResponse } from '../../src/types/appleMusic';
+import { AppleMusicAlbumResult, AppleMusicSearchResponse, AppleMusicSongResult } from '../../src/types/appleMusic';
 
 const appleMusicAlbums: AppleMusicAlbumResult[] = [
     {
@@ -125,7 +128,7 @@ test('findMatchingAppleMusicAlbum matches by release date prefix for month preci
     assert.deepEqual(matchingAlbum, appleMusicAlbums[1]);
 });
 
-test('getAppleMusicData uses the new album search client', async () => {
+test('searchAppleMusic initialises the client and searches with the given resource type', async () => {
     let initialized = false;
     let request:
         | {
@@ -148,7 +151,7 @@ test('getAppleMusicData uses the new album search client', async () => {
         },
     };
 
-    const result = await getAppleMusicData('American Football', 'American Football (LP4)', fakeClient);
+    const result = await searchAppleMusic('American Football', 'American Football (LP4)', ResourceType.Albums, fakeClient);
 
     assert.equal(initialized, true);
     assert.deepEqual(request, {
@@ -172,5 +175,93 @@ test('AppleMusicFinder returns the matched album url from search results', async
     assert.equal(
         await AppleMusicFinder('American Football (LP4)', 'American Football', '2026-05-01', fakeClient),
         'https://music.apple.com/ru/album/american-football-lp4/second',
+    );
+});
+
+const appleMusicSongs: AppleMusicSongResult[] = [
+    {
+        id: 'song-first',
+        type: 'songs',
+        href: '/v1/catalog/ru/songs/song-first',
+        attributes: {
+            artistName: 'American Football',
+            name: 'Never Meant',
+            releaseDate: '1999-05-26',
+            url: 'https://music.apple.com/ru/album/never-meant/song-first',
+        },
+    },
+    {
+        id: 'song-second',
+        type: 'songs',
+        href: '/v1/catalog/ru/songs/song-second',
+        attributes: {
+            artistName: 'American Football',
+            name: 'The Summer Ends',
+            releaseDate: '1999-05-26',
+            url: 'https://music.apple.com/ru/album/the-summer-ends/song-second',
+        },
+    },
+];
+
+const appleMusicSongsSearchResponse: AppleMusicSearchResponse = {
+    results: {
+        songs: {
+            href: '/v1/catalog/ru/search?groups=song',
+            name: 'Песни',
+            groupId: 'song',
+            data: appleMusicSongs,
+        },
+    },
+};
+
+test('extractAppleMusicSongs returns songs from search results', () => {
+    assert.deepEqual(extractAppleMusicSongs(appleMusicSongsSearchResponse), appleMusicSongs);
+});
+
+test('findMatchingAppleMusicSong returns first song when no release date provided', () => {
+    const matchingSong = findMatchingAppleMusicSong(appleMusicSongs);
+
+    assert.deepEqual(matchingSong, appleMusicSongs[0]);
+});
+
+test('findMatchingAppleMusicSong returns song within seven days of release date', () => {
+    const matchingSong = findMatchingAppleMusicSong(appleMusicSongs, '1999-05-26');
+
+    assert.deepEqual(matchingSong, appleMusicSongs[0]);
+});
+
+test('searchAppleMusic uses ResourceType.Songs when searching for tracks', async () => {
+    let request: { term: string; types: unknown[]; limit: number } | undefined;
+    const fakeClient = {
+        async init() {},
+        Search: {
+            async search(options: { term: string; types: unknown[]; limit: number }) {
+                request = options;
+
+                return appleMusicSongsSearchResponse;
+            },
+        },
+    };
+
+    const result = await searchAppleMusic('American Football', 'Never Meant', ResourceType.Songs, fakeClient);
+
+    assert.deepEqual(request?.types, ['songs']);
+    assert.equal(request?.term, 'American Football Never Meant');
+    assert.deepEqual(result, appleMusicSongsSearchResponse);
+});
+
+test('AppleMusicFinder with itemType=track returns song url from search results', async () => {
+    const fakeClient = {
+        async init() {},
+        Search: {
+            async search() {
+                return appleMusicSongsSearchResponse;
+            },
+        },
+    };
+
+    assert.equal(
+        await AppleMusicFinder('Never Meant', 'American Football', '1999-05-26', fakeClient, 'track'),
+        'https://music.apple.com/ru/album/never-meant/song-first',
     );
 });

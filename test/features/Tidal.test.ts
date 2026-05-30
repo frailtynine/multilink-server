@@ -2,8 +2,11 @@ import assert from 'node:assert/strict';
 import test from 'node:test';
 import getTidalUrl, {
     extractTidalAlbums,
+    extractTidalTracks,
     findMatchingTidalAlbum,
+    findMatchingTidalTrack,
     getTidalAlbumUrl,
+    getTidalTrackUrl,
 } from '../../src/features/Tidal';
 import { TidalSearchResponse } from '../../src/types/tidal';
 
@@ -241,6 +244,119 @@ test('getTidalUrl authenticates with Tidal and returns the matched album URL', a
         assert.equal(
             await getTidalUrl('American Football (LP4)', 'American Football', '2026-05-01'),
             'https://tidal.com/browse/album/487367594',
+        );
+    } finally {
+        globalThis.fetch = originalFetch;
+
+        if (originalClientId === undefined) {
+            delete process.env.TIDAL_CLIENT_ID;
+        } else {
+            process.env.TIDAL_CLIENT_ID = originalClientId;
+        }
+
+        if (originalClientSecret === undefined) {
+            delete process.env.TIDAL_CLIENT_SECRET;
+        } else {
+            process.env.TIDAL_CLIENT_SECRET = originalClientSecret;
+        }
+    }
+});
+
+const tidalTrackSearchResponse: TidalSearchResponse = {
+    data: {
+        relationships: {
+            tracks: {
+                data: [
+                    { id: 'track-100', type: 'tracks' },
+                    { id: 'track-200', type: 'tracks' },
+                ],
+            },
+        },
+    },
+    included: [
+        {
+            id: 'track-200',
+            type: 'tracks',
+            attributes: {
+                title: 'Never Meant',
+                releaseDate: '1999-05-26',
+                externalLinks: [
+                    {
+                        href: 'https://tidal.com/browse/track/track-200',
+                        meta: { type: 'TIDAL_SHARING' },
+                    },
+                ],
+            },
+        },
+        {
+            id: 'track-100',
+            type: 'tracks',
+            attributes: {
+                title: 'The Summer Ends',
+                releaseDate: '1999-05-26',
+                externalLinks: [
+                    {
+                        href: 'https://tidal.com/browse/track/track-100',
+                        meta: { type: 'TIDAL_SHARING' },
+                    },
+                ],
+            },
+        },
+    ],
+};
+
+test('extractTidalTracks returns related tracks in API order', () => {
+    assert.deepEqual(
+        extractTidalTracks(tidalTrackSearchResponse).map((track) => track.id),
+        ['track-100', 'track-200'],
+    );
+});
+
+test('findMatchingTidalTrack matches the requested track by title', () => {
+    const matchingTrack = findMatchingTidalTrack(
+        extractTidalTracks(tidalTrackSearchResponse),
+        'Never Meant',
+    );
+
+    assert.equal(matchingTrack?.id, 'track-200');
+});
+
+test('getTidalTrackUrl prefers the TIDAL_SHARING external link', () => {
+    const track = extractTidalTracks(tidalTrackSearchResponse).find((t) => t.id === 'track-200');
+
+    assert.equal(getTidalTrackUrl(track!), 'https://tidal.com/browse/track/track-200');
+});
+
+test('getTidalUrl with itemType=track authenticates and returns the matched track URL', async () => {
+    const originalFetch = globalThis.fetch;
+    const originalClientId = process.env.TIDAL_CLIENT_ID;
+    const originalClientSecret = process.env.TIDAL_CLIENT_SECRET;
+
+    process.env.TIDAL_CLIENT_ID = 'tidal-client-id';
+    process.env.TIDAL_CLIENT_SECRET = 'tidal-client-secret';
+
+    try {
+        globalThis.fetch = async (input: string | URL | Request, init?: RequestInit): Promise<Response> => {
+            const url = String(input);
+
+            if (url === 'https://auth.tidal.com/v1/oauth2/token') {
+                return new Response(JSON.stringify({ access_token: 'tidal-access-token' }), {
+                    status: 200,
+                    headers: { 'Content-Type': 'application/json' },
+                });
+            }
+
+            assert.ok(url.includes('include=tracks'), 'Expected include=tracks in URL');
+
+            return new Response(JSON.stringify(tidalTrackSearchResponse), {
+                status: 200,
+                headers: { 'Content-Type': 'application/vnd.api+json' },
+            });
+        };
+
+        assert.equal(
+            await getTidalUrl('Never Meant', 'American Football', undefined, 'track'),
+            'https://tidal.com/browse/track/track-200',
         );
     } finally {
         globalThis.fetch = originalFetch;

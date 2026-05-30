@@ -1,5 +1,6 @@
 "use strict";
 Object.defineProperty(exports, "__esModule", { value: true });
+exports.normalizeText = normalizeText;
 exports.findMatchingAlbum = findMatchingAlbum;
 const releaseDate_1 = require("./releaseDate");
 function normalizeText(value) {

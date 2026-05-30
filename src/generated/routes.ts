@@ -26,6 +26,7 @@ const models: TsoaRoute.Models = {
             "imageUrl": {"dataType":"string","required":true},
             "albumName": {"dataType":"string","required":true},
             "artistName": {"dataType":"string","required":true},
+            "itemType": {"dataType":"union","subSchemas":[{"dataType":"enum","enums":["album"]},{"dataType":"enum","enums":["track"]}]},
         },
         "additionalProperties": false,
     },

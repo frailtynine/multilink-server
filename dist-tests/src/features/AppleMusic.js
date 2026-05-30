@@ -1,11 +1,15 @@
 "use strict";
 Object.defineProperty(exports, "__esModule", { value: true });
-exports.getAppleMusicData = exports.AppleMusicFinder = void 0;
+exports.AppleMusicFinder = void 0;
 exports.createAppleMusicClient = createAppleMusicClient;
 exports.extractAppleMusicAlbums = extractAppleMusicAlbums;
 exports.findMatchingAppleMusicAlbum = findMatchingAppleMusicAlbum;
+exports.searchAppleMusic = searchAppleMusic;
+exports.extractAppleMusicSongs = extractAppleMusicSongs;
+exports.findMatchingAppleMusicSong = findMatchingAppleMusicSong;
 const applemusic_api_1 = require("@syncfm/applemusic-api");
 const albumMatching_1 = require("../utils/albumMatching");
+const releaseDate_1 = require("../utils/releaseDate");
 function resolveAppleMusicRegion() {
     const configuredRegion = process.env.APPLE_MUSIC_REGION?.toLowerCase();
     const supportedRegions = new Set(Object.values(applemusic_api_1.Region));
@@ -36,28 +40,42 @@ function findMatchingAppleMusicAlbum(results, requestedAlbumName, requestedArtis
         requireReleaseDateMatch: true,
     });
 }
-const getAppleMusicData = async (artistName, albumName, client = createAppleMusicClient()) => {
+async function searchAppleMusic(artistName, name, type, client = createAppleMusicClient()) {
     await client.init();
-    return client.Search.search({
-        term: `${artistName} ${albumName}`,
-        types: [applemusic_api_1.ResourceType.Albums],
-        limit: 10,
+    return client.Search.search({ term: `${artistName} ${name}`, types: [type], limit: 10 });
+}
+function extractAppleMusicSongs(searchResponse) {
+    const songGroup = searchResponse.results?.songs;
+    return songGroup?.data ?? [];
+}
+function findMatchingAppleMusicSong(results, spotifyReleaseDate) {
+    if (!spotifyReleaseDate) {
+        return results[0];
+    }
+    const matchingSong = results.find((song) => {
+        const releaseDate = song.attributes.releaseDate;
+        return releaseDate !== undefined && (0, releaseDate_1.releaseDatesMatch)(spotifyReleaseDate, releaseDate);
     });
-};
-exports.getAppleMusicData = getAppleMusicData;
-const AppleMusicFinder = async (albumName, artistName, spotifyReleaseDate, client) => {
-    const searchResults = await getAppleMusicData(artistName, albumName, client);
-    const albums = extractAppleMusicAlbums(searchResults);
-    const matchingAlbum = spotifyReleaseDate
-        ? findMatchingAppleMusicAlbum(albums, albumName, artistName, spotifyReleaseDate)
+    return matchingSong ?? results[0];
+}
+const AppleMusicFinder = async (name, artistName, releaseDate, client, itemType = 'album') => {
+    if (itemType === 'track') {
+        const response = await searchAppleMusic(artistName, name, applemusic_api_1.ResourceType.Songs, client);
+        const url = findMatchingAppleMusicSong(extractAppleMusicSongs(response), releaseDate)?.attributes.url;
+        if (!url) {
+            throw new Error('Song not found on Apple Music');
+        }
+        return url;
+    }
+    const response = await searchAppleMusic(artistName, name, applemusic_api_1.ResourceType.Albums, client);
+    const albums = extractAppleMusicAlbums(response);
+    const matchingAlbum = releaseDate
+        ? findMatchingAppleMusicAlbum(albums, name, artistName, releaseDate)
         : albums[0];
-    if (!matchingAlbum) {
+    const url = matchingAlbum?.attributes.url;
+    if (!url) {
         throw new Error('Album not found on Apple Music');
     }
-    const appleMusicUrl = matchingAlbum.attributes.url;
-    if (!appleMusicUrl) {
-        throw new Error('Album not found on Apple Music');
-    }
-    return appleMusicUrl;
+    return url;
 };
 exports.AppleMusicFinder = AppleMusicFinder;

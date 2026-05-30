@@ -11,4 +11,5 @@ export interface GetLinksResponse {
     imageUrl: string;
     albumName: string;
     artistName: string;
+    itemType?: 'album' | 'track';
 }

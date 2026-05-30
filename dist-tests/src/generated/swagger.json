@@ -32,6 +32,13 @@
                     },
                     "artistName": {
                         "type": "string"
+                    },
+                    "itemType": {
+                        "type": "string",
+                        "enum": [
+                            "album",
+                            "track"
+                        ]
                     }
                 },
                 "required": [

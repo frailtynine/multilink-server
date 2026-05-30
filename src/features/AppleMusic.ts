@@ -3,8 +3,10 @@ import {
     AppleMusicAlbumResult,
     AppleMusicSearchResponse,
     AppleMusicSearchResultContainer,
+    AppleMusicSongResult,
 } from '../types/appleMusic';
 import { findMatchingAlbum } from '../utils/albumMatching';
+import { releaseDatesMatch } from '../utils/releaseDate';
 
 export interface AppleMusicClient {
     init(): Promise<void>;
@@ -61,43 +63,72 @@ export function findMatchingAppleMusicAlbum(
     });
 }
 
-const getAppleMusicData = async (
+export async function searchAppleMusic(
     artistName: string,
-    albumName: string,
+    name: string,
+    type: ResourceType,
     client: AppleMusicClient = createAppleMusicClient(),
-): Promise<AppleMusicSearchResponse> => {
+): Promise<AppleMusicSearchResponse> {
     await client.init();
 
-    return client.Search.search({
-        term: `${artistName} ${albumName}`,
-        types: [ResourceType.Albums],
-        limit: 10,
+    return client.Search.search({ term: `${artistName} ${name}`, types: [type], limit: 10 });
+}
+
+export function extractAppleMusicSongs(
+    searchResponse: AppleMusicSearchResponse,
+): AppleMusicSongResult[] {
+    const songGroup: AppleMusicSearchResultContainer | undefined = searchResponse.results?.songs;
+
+    return songGroup?.data ?? [];
+}
+
+export function findMatchingAppleMusicSong(
+    results: AppleMusicSongResult[],
+    spotifyReleaseDate?: string,
+): AppleMusicSongResult | undefined {
+    if (!spotifyReleaseDate) {
+        return results[0];
+    }
+
+    const matchingSong = results.find((song) => {
+        const releaseDate = song.attributes.releaseDate;
+
+        return releaseDate !== undefined && releaseDatesMatch(spotifyReleaseDate, releaseDate);
     });
-};
+
+    return matchingSong ?? results[0];
+}
 
 const AppleMusicFinder = async (
-    albumName: string,
+    name: string,
     artistName: string,
-    spotifyReleaseDate?: string,
+    releaseDate?: string,
     client?: AppleMusicClient,
+    itemType: 'album' | 'track' = 'album',
 ): Promise<string> => {
-    const searchResults = await getAppleMusicData(artistName, albumName, client);
-    const albums = extractAppleMusicAlbums(searchResults);
-    const matchingAlbum = spotifyReleaseDate
-        ? findMatchingAppleMusicAlbum(albums, albumName, artistName, spotifyReleaseDate)
+    if (itemType === 'track') {
+        const response = await searchAppleMusic(artistName, name, ResourceType.Songs, client);
+        const url = findMatchingAppleMusicSong(extractAppleMusicSongs(response), releaseDate)?.attributes.url;
+
+        if (!url) {
+            throw new Error('Song not found on Apple Music');
+        }
+
+        return url;
+    }
+
+    const response = await searchAppleMusic(artistName, name, ResourceType.Albums, client);
+    const albums = extractAppleMusicAlbums(response);
+    const matchingAlbum = releaseDate
+        ? findMatchingAppleMusicAlbum(albums, name, artistName, releaseDate)
         : albums[0];
+    const url = matchingAlbum?.attributes.url;
 
-    if (!matchingAlbum) {
+    if (!url) {
         throw new Error('Album not found on Apple Music');
     }
 
-    const appleMusicUrl = matchingAlbum.attributes.url;
-
-    if (!appleMusicUrl) {
-        throw new Error('Album not found on Apple Music');
-    }
-
-    return appleMusicUrl;
+    return url;
 };
 
-export { AppleMusicFinder, getAppleMusicData };
+export { AppleMusicFinder };

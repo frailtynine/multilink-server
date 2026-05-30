@@ -3,12 +3,15 @@ var __importDefault = (this && this.__importDefault) || function (mod) {
     return (mod && mod.__esModule) ? mod : { "default": mod };
 };
 Object.defineProperty(exports, "__esModule", { value: true });
-exports.parseBandcampAlbumUrl = parseBandcampAlbumUrl;
+exports.parseBandcampUrl = parseBandcampUrl;
+exports.getBandcampUrlType = getBandcampUrlType;
 exports.normalizeBandcampReleaseDate = normalizeBandcampReleaseDate;
 exports.getBandcampAlbumDetails = getBandcampAlbumDetails;
 exports.getBandcampAlbumData = getBandcampAlbumData;
 exports.getBandcampAlbumDetailsFromUrl = getBandcampAlbumDetailsFromUrl;
 exports.composeBandcampSearchUrl = composeBandcampSearchUrl;
+exports.getBandcampTrackDetails = getBandcampTrackDetails;
+exports.getBandcampTrackDetailsFromUrl = getBandcampTrackDetailsFromUrl;
 const bandcamp_fetch_1 = __importDefault(require("bandcamp-fetch"));
 function normalizeBandcampSearchTerm(value) {
     return value.trim().split(/\s+/).filter(Boolean).join('+');
@@ -23,6 +26,25 @@ function parseBandcampAlbumUrl(bandcampUrl) {
         throw new Error('Invalid Bandcamp URL');
     }
     return bandcampUrl;
+}
+function parseBandcampUrl(bandcampUrl) {
+    const { hostname, pathname } = new URL(bandcampUrl);
+    if (hostname !== 'bandcamp.com' && !hostname.endsWith('.bandcamp.com')) {
+        throw new Error('Invalid Bandcamp URL');
+    }
+    const pathSegments = pathname.split('/').filter(Boolean);
+    if ((pathSegments[0] !== 'album' && pathSegments[0] !== 'track') || !pathSegments[1]) {
+        throw new Error('Invalid Bandcamp URL');
+    }
+    return bandcampUrl;
+}
+function getBandcampUrlType(bandcampUrl) {
+    const { pathname } = new URL(bandcampUrl);
+    const pathSegments = pathname.split('/').filter(Boolean);
+    if (pathSegments[0] === 'track') {
+        return 'track';
+    }
+    return 'album';
 }
 function normalizeBandcampReleaseDate(releaseDate) {
     if (!releaseDate) {
@@ -65,4 +87,26 @@ function composeBandcampSearchUrl(artistName, albumName) {
         item_type: 'a',
     });
     return `https://bandcamp.com/search?${searchParams.toString()}`;
+}
+function getBandcampTrackDetails(track) {
+    const primaryArtistName = track.artist?.name?.trim();
+    if (!primaryArtistName) {
+        throw new Error('Bandcamp track is missing artists');
+    }
+    const albumName = track.album?.name ?? track.name;
+    const imageUrl = track.imageUrl ?? track.album?.imageUrl ?? '';
+    return {
+        albumName,
+        trackName: track.name,
+        artistName: primaryArtistName,
+        primaryArtistName,
+        imageUrl,
+        releaseDate: normalizeBandcampReleaseDate(track.releaseDate),
+    };
+}
+async function getBandcampTrackDetailsFromUrl(bandcampUrl) {
+    const track = await bandcamp_fetch_1.default.track.getInfo({
+        trackUrl: parseBandcampUrl(bandcampUrl),
+    });
+    return getBandcampTrackDetails(track);
 }

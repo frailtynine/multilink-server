@@ -1,6 +1,6 @@
 # Multilink Server
 
-Every single music multilink service went down because Spotify changed their API rate limits. So, here's something you can host ypourself. Scrapes data from Spotify, Bandcamp, Apple Music and Deezer, for Tidal you need dev credentials. The API is protected by a token, so you can keep it private or share it with friends. Wouldn't recommend running it with thousands of requests per minute, but should be fine as a personal service.
+Every single music multilink service went down because Spotify changed their API rate limits. So, here's something you can host yourself. Scrapes data from Spotify, Bandcamp, Apple Music and Deezer, for Tidal you need dev credentials. The API is protected by a token, so you can keep it private or share it with friends. Wouldn't recommend running it with thousands of requests per minute, but should be fine as a personal service.
 
 ## What this service does
 

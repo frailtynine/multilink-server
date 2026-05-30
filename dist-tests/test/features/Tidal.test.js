@@ -247,3 +247,95 @@ const tidalSearchResponse = {
         }
     }
 });
+const tidalTrackSearchResponse = {
+    data: {
+        relationships: {
+            tracks: {
+                data: [
+                    { id: 'track-100', type: 'tracks' },
+                    { id: 'track-200', type: 'tracks' },
+                ],
+            },
+        },
+    },
+    included: [
+        {
+            id: 'track-200',
+            type: 'tracks',
+            attributes: {
+                title: 'Never Meant',
+                releaseDate: '1999-05-26',
+                externalLinks: [
+                    {
+                        href: 'https://tidal.com/browse/track/track-200',
+                        meta: { type: 'TIDAL_SHARING' },
+                    },
+                ],
+            },
+        },
+        {
+            id: 'track-100',
+            type: 'tracks',
+            attributes: {
+                title: 'The Summer Ends',
+                releaseDate: '1999-05-26',
+                externalLinks: [
+                    {
+                        href: 'https://tidal.com/browse/track/track-100',
+                        meta: { type: 'TIDAL_SHARING' },
+                    },
+                ],
+            },
+        },
+    ],
+};
+(0, node_test_1.default)('extractTidalTracks returns related tracks in API order', () => {
+    strict_1.default.deepEqual((0, Tidal_1.extractTidalTracks)(tidalTrackSearchResponse).map((track) => track.id), ['track-100', 'track-200']);
+});
+(0, node_test_1.default)('findMatchingTidalTrack matches the requested track by title', () => {
+    const matchingTrack = (0, Tidal_1.findMatchingTidalTrack)((0, Tidal_1.extractTidalTracks)(tidalTrackSearchResponse), 'Never Meant');
+    strict_1.default.equal(matchingTrack?.id, 'track-200');
+});
+(0, node_test_1.default)('getTidalTrackUrl prefers the TIDAL_SHARING external link', () => {
+    const track = (0, Tidal_1.extractTidalTracks)(tidalTrackSearchResponse).find((t) => t.id === 'track-200');
+    strict_1.default.equal((0, Tidal_1.getTidalTrackUrl)(track), 'https://tidal.com/browse/track/track-200');
+});
+(0, node_test_1.default)('getTidalUrl with itemType=track authenticates and returns the matched track URL', async () => {
+    const originalFetch = globalThis.fetch;
+    const originalClientId = process.env.TIDAL_CLIENT_ID;
+    const originalClientSecret = process.env.TIDAL_CLIENT_SECRET;
+    process.env.TIDAL_CLIENT_ID = 'tidal-client-id';
+    process.env.TIDAL_CLIENT_SECRET = 'tidal-client-secret';
+    try {
+        globalThis.fetch = async (input, init) => {
+            const url = String(input);
+            if (url === 'https://auth.tidal.com/v1/oauth2/token') {
+                return new Response(JSON.stringify({ access_token: 'tidal-access-token' }), {
+                    status: 200,
+                    headers: { 'Content-Type': 'application/json' },
+                });
+            }
+            strict_1.default.ok(url.includes('include=tracks'), 'Expected include=tracks in URL');
+            return new Response(JSON.stringify(tidalTrackSearchResponse), {
+                status: 200,
+                headers: { 'Content-Type': 'application/vnd.api+json' },
+            });
+        };
+        strict_1.default.equal(await (0, Tidal_1.default)('Never Meant', 'American Football', undefined, 'track'), 'https://tidal.com/browse/track/track-200');
+    }
+    finally {
+        globalThis.fetch = originalFetch;
+        if (originalClientId === undefined) {
+            delete process.env.TIDAL_CLIENT_ID;
+        }
+        else {
+            process.env.TIDAL_CLIENT_ID = originalClientId;
+        }
+        if (originalClientSecret === undefined) {
+            delete process.env.TIDAL_CLIENT_SECRET;
+        }
+        else {
+            process.env.TIDAL_CLIENT_SECRET = originalClientSecret;
+        }
+    }
+});

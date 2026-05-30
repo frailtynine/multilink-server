@@ -12,7 +12,7 @@ export interface AlbumMatcherOptions<T> {
     requireReleaseDateMatch?: boolean;
 }
 
-function normalizeText(value: string): string {
+export function normalizeText(value: string): string {
     return value
         .toLowerCase()
         .replace(/[^a-z0-9\s]/g, ' ')

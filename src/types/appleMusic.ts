@@ -17,8 +17,11 @@ export interface AppleMusicSearchResultContainer {
     data: AppleMusicAlbumResult[];
 }
 
+export type AppleMusicSongResult = AppleMusicAlbumResult;
+
 export interface AppleMusicSearchResponse {
     results?: {
         albums?: AppleMusicSearchResultContainer;
+        songs?: AppleMusicSearchResultContainer;
     };
 }
