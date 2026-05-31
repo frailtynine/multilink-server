@@ -18,7 +18,7 @@ const models: TsoaRoute.Models = {
     "GetLinksResponse": {
         "dataType": "refObject",
         "properties": {
-            "spotifyUrl": {"dataType":"string","required":true},
+            "spotifyUrl": {"dataType":"string"},
             "bandcampUrl": {"dataType":"string","required":true},
             "appleMusicUrl": {"dataType":"string"},
             "deezerUrl": {"dataType":"string"},
