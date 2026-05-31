@@ -44,7 +44,7 @@ export class GetLinksController {
         }
 
         let albumDetails: InputAlbumDetails;
-        let spotifyUrl = '';
+        let spotifyUrl: string | undefined;
         let bandcampUrl: string | undefined;
         let inputSource: 'spotify' | 'bandcamp';
         try {

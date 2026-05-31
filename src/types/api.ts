@@ -3,7 +3,7 @@ export interface ErrorResponse {
 }
 
 export interface GetLinksResponse {
-    spotifyUrl: string;
+    spotifyUrl?: string;
     bandcampUrl: string;
     appleMusicUrl?: string;
     deezerUrl?: string;

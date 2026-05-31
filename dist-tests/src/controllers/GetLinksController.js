@@ -39,7 +39,7 @@ let GetLinksController = class GetLinksController {
             return badRequestResponse(400, { message: 'Missing input URL' });
         }
         let albumDetails;
-        let spotifyUrl = '';
+        let spotifyUrl;
         let bandcampUrl;
         let inputSource;
         try {
