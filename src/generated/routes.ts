@@ -57,6 +57,7 @@ export function RegisterRoutes(app: Router) {
     
         const argsGetLinksController_getAlbum: Record<string, TsoaRoute.ParameterSchema> = {
                 badRequestResponse: {"in":"res","name":"400","required":true,"ref":"ErrorResponse"},
+                tooManyRequestsResponse: {"in":"res","name":"429","required":true,"ref":"ErrorResponse"},
                 serverErrorResponse: {"in":"res","name":"500","required":true,"ref":"ErrorResponse"},
                 url: {"in":"query","name":"url","dataType":"string"},
         };
