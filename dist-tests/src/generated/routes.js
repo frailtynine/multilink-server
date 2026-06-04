@@ -41,6 +41,7 @@ function RegisterRoutes(app) {
     // ###########################################################################################################
     const argsGetLinksController_getAlbum = {
         badRequestResponse: { "in": "res", "name": "400", "required": true, "ref": "ErrorResponse" },
+        tooManyRequestsResponse: { "in": "res", "name": "429", "required": true, "ref": "ErrorResponse" },
         serverErrorResponse: { "in": "res", "name": "500", "required": true, "ref": "ErrorResponse" },
         url: { "in": "query", "name": "url", "dataType": "string" },
     };
