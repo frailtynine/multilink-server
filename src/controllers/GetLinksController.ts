@@ -67,287 +67,185 @@ export class GetLinksController {
         if (!url) {
             return badRequestResponse(400, { message: 'Missing input URL' });
         }
-
-        let itemDetails: InputItemDetails;
-        let spotifyUrl: string | undefined;
-        let bandcampUrl: string | undefined;
-        let inputSource: 'spotify' | 'bandcamp';
-        let itemType: ItemType;
+        
         try {
-            const sourceResult = getUrlSource(url);
-            inputSource = sourceResult.source;
-            itemType = sourceResult.itemType;
-        } catch {
-            return badRequestResponse(400, { message: 'Invalid URL. Expected a Spotify or Bandcamp album or track URL' });
-        }
+            return await scheduleGetLinksRequest(async () => {
 
-        if (inputSource === 'spotify') {
-            if (itemType === 'track') {
+                let itemDetails: InputItemDetails;
+                let spotifyUrl: string | undefined;
+                let bandcampUrl: string | undefined;
+                let inputSource: 'spotify' | 'bandcamp';
+                let itemType: ItemType;
                 try {
-                    const trackDetails = getSpotifyTrackDetails(await getSpotifyTrackData(url));
-                    itemDetails = {
-                        albumName: trackDetails.trackName,
-                        artistName: trackDetails.artistName,
-                        primaryArtistName: trackDetails.primaryArtistName,
-                        imageUrl: trackDetails.imageUrl,
-                        releaseDate: trackDetails.releaseDate,
-                        itemType: 'track',
-                    };
-                    spotifyUrl = trackDetails.spotifyUrl;
-                } catch (error) {
-                    this.logger.error('Failed to fetch track from Spotify', { error, inputUrl: url });
-                    return serverErrorResponse(500, { message: 'Failed to fetch track from Spotify' });
+                    const sourceResult = getUrlSource(url);
+                    inputSource = sourceResult.source;
+                    itemType = sourceResult.itemType;
+                } catch {
+                    return badRequestResponse(400, { message: 'Invalid URL. Expected a Spotify or Bandcamp album or track URL' });
                 }
-            } else {
-                try {
-                    const spotifyAlbumDetails = getSpotifyAlbumDetails(await getSpotifyData(url));
-                    itemDetails = {
-                        ...spotifyAlbumDetails,
-                        itemType: 'album',
-                    };
-                    spotifyUrl = spotifyAlbumDetails.spotifyUrl;
-                } catch (error) {
-                    this.logger.error('Failed to fetch album from Spotify', { error, inputUrl: url });
-                    return serverErrorResponse(500, { message: 'Failed to fetch album from Spotify' });
+        
+                if (inputSource === 'spotify') {
+                    if (itemType === 'track') {
+                        try {
+                            const trackDetails = getSpotifyTrackDetails(await getSpotifyTrackData(url));
+                            itemDetails = {
+                                albumName: trackDetails.trackName,
+                                artistName: trackDetails.artistName,
+                                primaryArtistName: trackDetails.primaryArtistName,
+                                imageUrl: trackDetails.imageUrl,
+                                releaseDate: trackDetails.releaseDate,
+                                itemType: 'track',
+                            };
+                            spotifyUrl = trackDetails.spotifyUrl;
+                        } catch (error) {
+                            this.logger.error('Failed to fetch track from Spotify', { error, inputUrl: url });
+                            return serverErrorResponse(500, { message: 'Failed to fetch track from Spotify' });
+                        }
+                    } else {
+                        try {
+                            const spotifyAlbumDetails = getSpotifyAlbumDetails(await getSpotifyData(url));
+                            itemDetails = {
+                                ...spotifyAlbumDetails,
+                                itemType: 'album',
+                            };
+                            spotifyUrl = spotifyAlbumDetails.spotifyUrl;
+                        } catch (error) {
+                            this.logger.error('Failed to fetch album from Spotify', { error, inputUrl: url });
+                            return serverErrorResponse(500, { message: 'Failed to fetch album from Spotify' });
+                        }
+                    }
+                } else {
+                    bandcampUrl = url;
+                    if (itemType === 'track') {
+                        try {
+                            const trackDetails = await getBandcampTrackDetailsFromUrl(url);
+                            itemDetails = {
+                                albumName: trackDetails.trackName,
+                                artistName: trackDetails.artistName,
+                                primaryArtistName: trackDetails.primaryArtistName,
+                                imageUrl: trackDetails.imageUrl,
+                                releaseDate: trackDetails.releaseDate,
+                                itemType: 'track',
+                            };
+                        } catch (error) {
+                            this.logger.error('Failed to fetch track from Bandcamp', { error, inputUrl: url });
+                            return serverErrorResponse(500, { message: 'Failed to fetch track from Bandcamp' });
+                        }
+        
+                        try {
+                            spotifyUrl = await findSpotifyTrackUrl(
+                                itemDetails.albumName,
+                                itemDetails.primaryArtistName,
+                            );
+                        } catch (error) {
+                            this.logger.error('Failed to find track on Spotify from Bandcamp data', {
+                                error,
+                                trackName: itemDetails.albumName,
+                                artistName: itemDetails.primaryArtistName,
+                            });
+                        }
+                    } else {
+                        try {
+                            const bandcampDetails = await getBandcampAlbumDetailsFromUrl(url);
+                            itemDetails = {
+                                ...bandcampDetails,
+                                itemType: 'album',
+                            };
+                        } catch (error) {
+                            this.logger.error('Failed to fetch album from Bandcamp', { error, inputUrl: url });
+                            return serverErrorResponse(500, { message: 'Failed to fetch album from Bandcamp' });
+                        }
+        
+                        try {
+                            spotifyUrl = await findSpotifyAlbumUrl(
+                                itemDetails.albumName,
+                                itemDetails.primaryArtistName,
+                                itemDetails.releaseDate,
+                            );
+                        } catch (error) {
+                            this.logger.error('Failed to find album on Spotify from Bandcamp data', {
+                                error,
+                                albumName: itemDetails.albumName,
+                                artistName: itemDetails.primaryArtistName,
+                                releaseDate: itemDetails.releaseDate,
+                            });
+                        }
+                    }
                 }
-            }
-        } else {
-            bandcampUrl = url;
-            if (itemType === 'track') {
-                try {
-                    const trackDetails = await getBandcampTrackDetailsFromUrl(url);
-                    itemDetails = {
-                        albumName: trackDetails.trackName,
-                        artistName: trackDetails.artistName,
-                        primaryArtistName: trackDetails.primaryArtistName,
-                        imageUrl: trackDetails.imageUrl,
-                        releaseDate: trackDetails.releaseDate,
-                        itemType: 'track',
-                    };
-                } catch (error) {
-                    this.logger.error('Failed to fetch track from Bandcamp', { error, inputUrl: url });
-                    return serverErrorResponse(500, { message: 'Failed to fetch track from Bandcamp' });
+        
+                if (!bandcampUrl) {
+                    bandcampUrl = composeBandcampSearchUrl(itemDetails.primaryArtistName, itemDetails.albumName, itemDetails.itemType);
                 }
-
+        
+                let appleMusicUrl: string | undefined;
                 try {
-                    spotifyUrl = await findSpotifyTrackUrl(
-                        itemDetails.albumName,
-                        itemDetails.primaryArtistName,
-                    );
-                } catch (error) {
-                    this.logger.error('Failed to find track on Spotify from Bandcamp data', {
-                        error,
-                        trackName: itemDetails.albumName,
-                        artistName: itemDetails.primaryArtistName,
-                    });
-                }
-            } else {
-                try {
-                    const bandcampDetails = await getBandcampAlbumDetailsFromUrl(url);
-                    itemDetails = {
-                        ...bandcampDetails,
-                        itemType: 'album',
-                    };
-                } catch (error) {
-                    this.logger.error('Failed to fetch album from Bandcamp', { error, inputUrl: url });
-                    return serverErrorResponse(500, { message: 'Failed to fetch album from Bandcamp' });
-                }
-
-                try {
-                    spotifyUrl = await findSpotifyAlbumUrl(
+                    appleMusicUrl = await AppleMusicFinder(
                         itemDetails.albumName,
                         itemDetails.primaryArtistName,
                         itemDetails.releaseDate,
+                        undefined,
+                        itemDetails.itemType,
                     );
                 } catch (error) {
-                    this.logger.error('Failed to find album on Spotify from Bandcamp data', {
+                    this.logger.error('Failed to fetch link from Apple Music', {
                         error,
                         albumName: itemDetails.albumName,
                         artistName: itemDetails.primaryArtistName,
                         releaseDate: itemDetails.releaseDate,
+                        itemType: itemDetails.itemType,
                     });
                 }
-            }
-        }
-
-        if (!bandcampUrl) {
-            bandcampUrl = composeBandcampSearchUrl(itemDetails.primaryArtistName, itemDetails.albumName, itemDetails.itemType);
-        }
-
-        let appleMusicUrl: string | undefined;
-        try {
-            appleMusicUrl = await AppleMusicFinder(
-                itemDetails.albumName,
-                itemDetails.primaryArtistName,
-                itemDetails.releaseDate,
-                undefined,
-                itemDetails.itemType,
-            );
-        } catch (error) {
-            this.logger.error('Failed to fetch link from Apple Music', {
-                error,
-                albumName: itemDetails.albumName,
-                artistName: itemDetails.primaryArtistName,
-                releaseDate: itemDetails.releaseDate,
-                itemType: itemDetails.itemType,
-            });
-        }
-
-        let deezerUrl: string | undefined;
-        try {
-            deezerUrl = await getDeezerData(
-                itemDetails.albumName,
-                itemDetails.primaryArtistName,
-                itemDetails.itemType,
-            );
-        } catch (error) {
-            this.logger.error('Failed to fetch link from Deezer', {
-                error,
-                albumName: itemDetails.albumName,
-                artistName: itemDetails.primaryArtistName,
-                itemType: itemDetails.itemType,
-            });
-        }
-
-        let tidalUrl: string | undefined;
-        try {
-            tidalUrl = await getTidalUrl(
-                itemDetails.albumName,
-                itemDetails.primaryArtistName,
-                itemDetails.releaseDate,
-                itemDetails.itemType,
-            );
-        } catch (error) {
-            this.logger.error('Failed to fetch link from Tidal', {
-                error,
-                albumName: itemDetails.albumName,
-                artistName: itemDetails.primaryArtistName,
-                releaseDate: itemDetails.releaseDate,
-                itemType: itemDetails.itemType,
-        try {
-            return await scheduleGetLinksRequest(async () => {
-                let albumDetails: InputAlbumDetails;
-                let spotifyUrl: string | undefined;
-                let bandcampUrl: string | undefined;
-                let inputSource: 'spotify' | 'bandcamp';
-                try {
-                    inputSource = getUrlSource(url);
-                } catch {
-                    return badRequestResponse(400, { message: 'Invalid URL. Expected a Spotify or Bandcamp album URL' });
-                }
-
-                if (inputSource === 'spotify') {
-                    try {
-                        const spotifyAlbumDetails = getSpotifyAlbumDetails(await getSpotifyData(url));
-                        albumDetails = spotifyAlbumDetails;
-                        spotifyUrl = spotifyAlbumDetails.spotifyUrl;
-                    } catch (error) {
-                        this.logger.error('Failed to fetch album from Spotify', { error, inputUrl: url });
-                        return serverErrorResponse(500, { message: 'Failed to fetch album from Spotify' });
-                    }
-                } else {
-                    try {
-                        albumDetails = await getBandcampAlbumDetailsFromUrl(url);
-                        bandcampUrl = url;
-                    } catch (error) {
-                        this.logger.error('Failed to fetch album from Bandcamp', { error, inputUrl: url });
-                        return serverErrorResponse(500, { message: 'Failed to fetch album from Bandcamp' });
-                    }
-
-                    try {
-                        spotifyUrl = await findSpotifyAlbumUrl(
-                            albumDetails.albumName,
-                            albumDetails.primaryArtistName,
-                            albumDetails.releaseDate,
-                        );
-                    } catch (error) {
-                        this.logger.error('Failed to find album on Spotify from Bandcamp data', {
-                            error,
-                            albumName: albumDetails.albumName,
-                            artistName: albumDetails.primaryArtistName,
-                            releaseDate: albumDetails.releaseDate,
-                        });
-                    }
-                }
-
-                if (!bandcampUrl) {
-                    bandcampUrl = composeBandcampSearchUrl(albumDetails.primaryArtistName, albumDetails.albumName);
-                }
-
-                let appleMusicUrl: string | undefined;
-                try {
-                    appleMusicUrl = await AppleMusicFinder(
-                        albumDetails.albumName,
-                        albumDetails.primaryArtistName,
-                        albumDetails.releaseDate,
-                    );
-                } catch (error) {
-                    this.logger.error('Failed to fetch album link from Apple Music', {
-                        error,
-                        albumName: albumDetails.albumName,
-                        artistName: albumDetails.primaryArtistName,
-                        releaseDate: albumDetails.releaseDate,
-                    });
-                }
-
+        
                 let deezerUrl: string | undefined;
                 try {
                     deezerUrl = await getDeezerData(
-                        albumDetails.albumName,
-                        albumDetails.primaryArtistName,
+                        itemDetails.albumName,
+                        itemDetails.primaryArtistName,
+                        itemDetails.itemType,
                     );
                 } catch (error) {
-                    this.logger.error('Failed to fetch album link from Deezer', {
+                    this.logger.error('Failed to fetch link from Deezer', {
                         error,
-                        albumName: albumDetails.albumName,
-                        artistName: albumDetails.primaryArtistName,
+                        albumName: itemDetails.albumName,
+                        artistName: itemDetails.primaryArtistName,
+                        itemType: itemDetails.itemType,
                     });
                 }
-
+        
                 let tidalUrl: string | undefined;
                 try {
                     tidalUrl = await getTidalUrl(
-                        albumDetails.albumName,
-                        albumDetails.primaryArtistName,
-                        albumDetails.releaseDate,
+                        itemDetails.albumName,
+                        itemDetails.primaryArtistName,
+                        itemDetails.releaseDate,
+                        itemDetails.itemType,
                     );
                 } catch (error) {
-                    this.logger.error('Failed to fetch album link from Tidal', {
+                    this.logger.error('Failed to fetch link from Tidal', {
                         error,
-                        albumName: albumDetails.albumName,
-                        artistName: albumDetails.primaryArtistName,
-                        releaseDate: albumDetails.releaseDate,
+                        albumName: itemDetails.albumName,
+                        artistName: itemDetails.primaryArtistName,
+                        releaseDate: itemDetails.releaseDate,
+                        itemType: itemDetails.itemType,
                     });
                 }
-
                 return {
                     spotifyUrl,
                     bandcampUrl,
                     appleMusicUrl,
                     deezerUrl,
                     tidalUrl,
-                    imageUrl: albumDetails.imageUrl,
-                    albumName: albumDetails.albumName,
-                    artistName: albumDetails.artistName,
+                    imageUrl: itemDetails.imageUrl,
+                    albumName: itemDetails.albumName,
+                    artistName: itemDetails.artistName,
+                    itemType: itemDetails.itemType,
                 };
             });
         } catch (error) {
             if (error instanceof GetLinksQueueTimeoutError) {
-                this.logger.warn('Get links request timed out in queue', { inputUrl: url });
+                this.logger.warn('Get links request timed out', { inputUrl: url });
                 return tooManyRequestsResponse(429, { message: 'Too many requests. Please try again later.' });
             }
-
-        return {
-            spotifyUrl,
-            bandcampUrl,
-            appleMusicUrl,
-            deezerUrl,
-            tidalUrl,
-            imageUrl: itemDetails.imageUrl,
-            albumName: itemDetails.albumName,
-            artistName: itemDetails.artistName,
-            itemType: itemDetails.itemType,
-        };
             this.logger.error('Failed to process get links request', { error, inputUrl: url });
             return serverErrorResponse(500, { message: 'Failed to process request' });
         }
