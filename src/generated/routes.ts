@@ -15,6 +15,11 @@ const expressAuthenticationRecasted = expressAuthentication as (req: ExRequest, 
 // WARNING: This file was auto-generated with tsoa. Please do not modify it. Re-run tsoa to re-generate this file: https://github.com/lukeautry/tsoa
 
 const models: TsoaRoute.Models = {
+    "ItemType": {
+        "dataType": "refAlias",
+        "type": {"dataType":"union","subSchemas":[{"dataType":"enum","enums":["album"]},{"dataType":"enum","enums":["track"]}],"validators":{}},
+    },
+    // WARNING: This file was auto-generated with tsoa. Please do not modify it. Re-run tsoa to re-generate this file: https://github.com/lukeautry/tsoa
     "GetLinksResponse": {
         "dataType": "refObject",
         "properties": {
@@ -26,6 +31,7 @@ const models: TsoaRoute.Models = {
             "imageUrl": {"dataType":"string","required":true},
             "albumName": {"dataType":"string","required":true},
             "artistName": {"dataType":"string","required":true},
+            "itemType": {"ref":"ItemType"},
         },
         "additionalProperties": false,
     },

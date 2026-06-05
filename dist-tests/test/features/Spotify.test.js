@@ -131,6 +131,12 @@ const spotifySearchAlbumsResponse = {
         async searchAlbums() {
             throw new Error('not implemented');
         },
+        async getTrack() {
+            throw new Error('not implemented');
+        },
+        async searchTracks() {
+            throw new Error('not implemented');
+        },
     };
     const result = await (0, Spotify_1.getSpotifyData)('https://open.spotify.com/album/2pvLN2jTZhYg9aWQyESDps?si=example', spotifyClient);
     strict_1.default.equal(requestedSpotifyId, '2pvLN2jTZhYg9aWQyESDps');
@@ -273,9 +279,197 @@ const spotifySearchAlbumsResponse = {
             requestedLimit = limit;
             return spotifySearchAlbumsResponse;
         },
+        async getTrack() {
+            throw new Error('not implemented');
+        },
+        async searchTracks() {
+            throw new Error('not implemented');
+        },
     };
     const spotifyUrl = await (0, Spotify_1.findSpotifyAlbumUrl)('Graceful', 'Touch Girl Apple Blossom', '2026-05-15', spotifyClient);
     strict_1.default.equal(requestedTerms, 'Touch Girl Apple Blossom Graceful');
     strict_1.default.equal(requestedLimit, 10);
     strict_1.default.equal(spotifyUrl, 'https://open.spotify.com/album/first-match');
+});
+const spotifyTrackResponse = {
+    data: {
+        trackUnion: {
+            __typename: 'Track',
+            id: 'trackId123',
+            uri: 'spotify:track:trackId123',
+            name: 'Graceful (Title Track)',
+            sharingInfo: {
+                shareUrl: 'https://open.spotify.com/track/trackId123',
+                shareId: 'trackId123',
+            },
+            artistsWithRoles: {
+                items: [
+                    {
+                        role: 'MAIN',
+                        artist: {
+                            id: 'artistId1',
+                            uri: 'spotify:artist:artistId1',
+                            profile: {
+                                name: 'Touch Girl Apple Blossom',
+                            },
+                        },
+                    },
+                ],
+            },
+            albumOfTrack: {
+                id: 'albumId1',
+                name: 'Graceful',
+                uri: 'spotify:album:albumId1',
+                date: {
+                    isoString: '2026-05-15T00:00:00Z',
+                    precision: 'DAY',
+                    year: 2026,
+                },
+                coverArt: {
+                    sources: [
+                        {
+                            url: 'https://i.scdn.co/image/track-cover',
+                            width: 640,
+                            height: 640,
+                        },
+                    ],
+                },
+            },
+        },
+    },
+};
+const spotifySearchTracksResponse = {
+    data: {
+        searchV2: {
+            tracksV2: {
+                items: [
+                    {
+                        item: {
+                            data: {
+                                __typename: 'Track',
+                                uri: 'spotify:track:track-match',
+                                id: 'track-match',
+                                name: 'Graceful (Title Track)',
+                                albumOfTrack: {
+                                    uri: 'spotify:album:albumId1',
+                                    name: 'Graceful',
+                                    id: 'albumId1',
+                                    coverArt: {
+                                        sources: [],
+                                    },
+                                },
+                                artists: {
+                                    items: [
+                                        {
+                                            uri: 'spotify:artist:artist-1',
+                                            profile: {
+                                                name: 'Touch Girl Apple Blossom',
+                                            },
+                                        },
+                                    ],
+                                },
+                            },
+                        },
+                    },
+                    {
+                        item: {
+                            data: {
+                                __typename: 'Track',
+                                uri: 'spotify:track:wrong-artist',
+                                id: 'wrong-artist',
+                                name: 'Graceful (Title Track)',
+                                albumOfTrack: {
+                                    uri: 'spotify:album:otherAlbum',
+                                    name: 'Other Album',
+                                    id: 'otherAlbum',
+                                    coverArt: {
+                                        sources: [],
+                                    },
+                                },
+                                artists: {
+                                    items: [
+                                        {
+                                            uri: 'spotify:artist:artist-2',
+                                            profile: {
+                                                name: 'Someone Else',
+                                            },
+                                        },
+                                    ],
+                                },
+                            },
+                        },
+                    },
+                ],
+            },
+        },
+    },
+};
+(0, node_test_1.default)('parseSpotifyTrackId returns the spotify track id from a track URL', () => {
+    const trackId = (0, Spotify_1.parseSpotifyTrackId)('https://open.spotify.com/track/trackId123?si=example');
+    strict_1.default.equal(trackId, 'trackId123');
+});
+(0, node_test_1.default)('parseSpotifyTrackId rejects album URLs', () => {
+    strict_1.default.throws(() => (0, Spotify_1.parseSpotifyTrackId)('https://open.spotify.com/album/2up3OPMp9Tb4dAKM2erWXQ'), {
+        message: 'Invalid Spotify URL',
+    });
+});
+(0, node_test_1.default)('getSpotifyTrackData uses the parsed track id with the Spotify client', async () => {
+    let requestedTrackId;
+    const spotifyClient = {
+        async getAlbum() {
+            throw new Error('not implemented');
+        },
+        async searchAlbums() {
+            throw new Error('not implemented');
+        },
+        async getTrack(id) {
+            requestedTrackId = id;
+            return spotifyTrackResponse;
+        },
+        async searchTracks() {
+            throw new Error('not implemented');
+        },
+    };
+    const result = await (0, Spotify_1.getSpotifyTrackData)('https://open.spotify.com/track/trackId123?si=example', spotifyClient);
+    strict_1.default.equal(requestedTrackId, 'trackId123');
+    strict_1.default.deepEqual(result, spotifyTrackResponse);
+});
+(0, node_test_1.default)('getSpotifyTrackDetails extracts fields from the Spotify track response', () => {
+    strict_1.default.deepEqual((0, Spotify_1.getSpotifyTrackDetails)(spotifyTrackResponse), {
+        spotifyUrl: 'https://open.spotify.com/track/trackId123',
+        trackName: 'Graceful (Title Track)',
+        albumName: 'Graceful',
+        artistName: 'Touch Girl Apple Blossom',
+        primaryArtistName: 'Touch Girl Apple Blossom',
+        imageUrl: 'https://i.scdn.co/image/track-cover',
+        releaseDate: '2026-05-15',
+    });
+});
+(0, node_test_1.default)('findMatchingSpotifyTrack prefers the result with matching track name and artist', () => {
+    const matchingTrack = (0, Spotify_1.findMatchingSpotifyTrack)(spotifySearchTracksResponse.data.searchV2.tracksV2.items, 'Graceful (Title Track)', 'Touch Girl Apple Blossom');
+    strict_1.default.deepEqual(matchingTrack, spotifySearchTracksResponse.data.searchV2.tracksV2.items[0]);
+});
+(0, node_test_1.default)('findSpotifyTrackUrl returns a canonical track URL from search results', async () => {
+    let requestedTerms;
+    let requestedLimit;
+    const spotifyClient = {
+        async getAlbum() {
+            throw new Error('not implemented');
+        },
+        async searchAlbums() {
+            throw new Error('not implemented');
+        },
+        async getTrack() {
+            throw new Error('not implemented');
+        },
+        async searchTracks(terms, limit) {
+            requestedTerms = terms;
+            requestedLimit = limit;
+            return spotifySearchTracksResponse;
+        },
+    };
+    const trackUrl = await (0, Spotify_1.findSpotifyTrackUrl)('Graceful (Title Track)', 'Touch Girl Apple Blossom', spotifyClient);
+    strict_1.default.equal(requestedTerms, 'Touch Girl Apple Blossom Graceful (Title Track)');
+    strict_1.default.equal(requestedLimit, 10);
+    strict_1.default.equal(trackUrl, 'https://open.spotify.com/track/track-match');
 });

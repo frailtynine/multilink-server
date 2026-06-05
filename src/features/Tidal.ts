@@ -5,6 +5,8 @@ import {
     TidalArtist,
     TidalIncludedResource,
     TidalSearchResponse,
+    TidalTrack,
+    TidalTrackRelationship,
 } from '../types/tidal';
 
 interface TidalAlbumCandidate {
@@ -60,6 +62,10 @@ async function getAccessToken(): Promise<string> {
 
 function isAlbum(result: TidalIncludedResource): result is TidalAlbum {
     return result.type === 'albums';
+}
+
+function normalizeTitle(title: string): string {
+    return title.replace(/[^a-z0-9]/gi, '').toLowerCase();
 }
 
 function isArtist(result: TidalIncludedResource): result is TidalArtist {
@@ -172,12 +178,102 @@ async function searchTidalCandidates(
     return mapTidalCandidates(payload);
 }
 
+function isTrackRelationship(relationship: TidalTrackRelationship): boolean {
+    return relationship.type === 'tracks';
+}
+
+function isTrack(result: TidalIncludedResource): result is TidalTrack {
+    return result.type === 'tracks';
+}
+
+export function extractTidalTracks(searchResponse: TidalSearchResponse): TidalTrack[] {
+    const relatedTrackIds = searchResponse.data?.relationships?.tracks?.data
+        ?.filter(isTrackRelationship)
+        .map(({ id }) => id) ?? [];
+
+    const includedTracks = (searchResponse.included ?? []).filter(isTrack);
+
+    if (relatedTrackIds.length === 0) {
+        return includedTracks;
+    }
+
+    const tracksById = new Map(includedTracks.map((track) => [track.id, track]));
+
+    return relatedTrackIds
+        .map((trackId) => tracksById.get(trackId))
+        .filter((track): track is TidalTrack => track !== undefined);
+}
+
+export function findMatchingTidalTrack(
+    tracks: TidalTrack[],
+    requestedTrackName: string,
+): TidalTrack | undefined {
+    const normalizedRequestedTrackName = normalizeTitle(requestedTrackName);
+    const tracksWithMatchingTitle = tracks.filter((track) => {
+        const trackTitle = track.attributes?.title;
+
+        return trackTitle !== undefined && normalizeTitle(trackTitle) === normalizedRequestedTrackName;
+    });
+
+    return (tracksWithMatchingTitle.length > 0 ? tracksWithMatchingTitle : tracks)[0];
+}
+
+export function getTidalTrackUrl(track: TidalTrack): string | undefined {
+    const externalLinks = track.attributes?.externalLinks ?? [];
+    const tidalSharingLink = externalLinks.find((link) => link.meta?.type === 'TIDAL_SHARING');
+
+    return tidalSharingLink?.href ?? externalLinks[0]?.href;
+}
+
+async function searchTidalTracks(
+    accessToken: string,
+    trackName: string,
+    artistName: string,
+): Promise<TidalTrack[]> {
+    const query = `${artistName} ${trackName}`;
+    const searchUrl = new URL(`https://openapi.tidal.com/v2/searchResults/${encodeURIComponent(query)}`);
+
+    searchUrl.searchParams.set('include', 'tracks');
+    searchUrl.searchParams.set('countryCode', 'US');
+    searchUrl.searchParams.set('explicitFilter', 'INCLUDE');
+
+    const response = await fetch(searchUrl, {
+        method: 'GET',
+        headers: {
+            Authorization: `Bearer ${accessToken}`,
+            Accept: 'application/vnd.api+json',
+        },
+    });
+
+    if (!response.ok) {
+        throw new Error(`Tidal search failed: ${response.status}`);
+    }
+
+    const payload = await response.json() as TidalSearchResponse;
+
+    return extractTidalTracks(payload);
+}
+
 async function getTidalUrl(
     albumName: string,
     artistName: string,
     spotifyReleaseDate?: string,
+    itemType: 'album' | 'track' = 'album',
 ): Promise<string> {
     const accessToken = await getAccessToken();
+
+    if (itemType === 'track') {
+        const tracks = await searchTidalTracks(accessToken, albumName, artistName);
+        const matchingTrack = findMatchingTidalTrack(tracks, albumName);
+        const trackUrl = matchingTrack ? getTidalTrackUrl(matchingTrack) : undefined;
+
+        if (!trackUrl) {
+            throw new Error('Track not found on Tidal');
+        }
+
+        return trackUrl;
+    }
+
     const candidates = await searchTidalCandidates(accessToken, albumName, artistName);
     const matchingCandidate = findMatchingAlbum({
         albums: candidates,

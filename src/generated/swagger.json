@@ -7,6 +7,13 @@
 		"requestBodies": {},
 		"responses": {},
 		"schemas": {
+			"ItemType": {
+				"type": "string",
+				"enum": [
+					"album",
+					"track"
+				]
+			},
 			"GetLinksResponse": {
 				"properties": {
 					"spotifyUrl": {
@@ -32,6 +39,9 @@
 					},
 					"artistName": {
 						"type": "string"
+					},
+					"itemType": {
+						"$ref": "#/components/schemas/ItemType"
 					}
 				},
 				"required": [

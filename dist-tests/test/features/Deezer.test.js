@@ -86,9 +86,35 @@ function createMockDeezerClient(searchResponse) {
                 strict_1.default.equal(albumFilter, 'American Football (LP4)');
                 return searchResponse;
             },
+            async track() {
+                throw new Error('not implemented');
+            },
         },
     };
 }
+const deezerTrackSearchResponse = {
+    data: [
+        {
+            id: 111111111,
+            title: 'Never Meant',
+            link: 'https://www.deezer.com/track/111111111',
+            artist: {
+                id: 123,
+                name: 'American Football',
+            },
+        },
+        {
+            id: 222222222,
+            title: 'Never Meant',
+            link: 'https://www.deezer.com/track/222222222',
+            artist: {
+                id: 456,
+                name: 'Someone Else',
+            },
+        },
+    ],
+    total: 2,
+};
 (0, node_test_1.default)('findMatchingDeezerAlbum matches the requested album by title and artist', () => {
     const matchingAlbum = (0, Deezer_1.findMatchingDeezerAlbum)(deezerSearchResponse.data, 'American Football (LP4)', 'American Football');
     strict_1.default.equal(matchingAlbum?.id, 933527471);
@@ -101,6 +127,56 @@ function createMockDeezerClient(searchResponse) {
     strict_1.default.deepEqual(result, deezerSearchResponse);
 });
 (0, node_test_1.default)('getDeezerData returns the matched Deezer album URL', async () => {
-    const deezerUrl = await (0, Deezer_1.default)('American Football (LP4)', 'American Football', createMockDeezerClient(deezerSearchResponse));
+    const deezerUrl = await (0, Deezer_1.default)('American Football (LP4)', 'American Football', 'album', createMockDeezerClient(deezerSearchResponse));
     strict_1.default.equal(deezerUrl, 'https://www.deezer.com/album/933527471');
+});
+(0, node_test_1.default)('findMatchingDeezerTrack matches the requested track by title and artist', () => {
+    const matchingTrack = (0, Deezer_1.findMatchingDeezerTrack)(deezerTrackSearchResponse.data, 'Never Meant', 'American Football');
+    strict_1.default.equal(matchingTrack?.id, 111111111);
+});
+(0, node_test_1.default)('getDeezerTrackUrl returns the Deezer track link', () => {
+    strict_1.default.equal((0, Deezer_1.getDeezerTrackUrl)(deezerTrackSearchResponse.data[0]), 'https://www.deezer.com/track/111111111');
+});
+(0, node_test_1.default)('searchDeezerTracks calls the track search endpoint', async () => {
+    let requestedQuery;
+    const mockClient = {
+        search: {
+            builder() {
+                return {
+                    album() { return this; },
+                    build() { return ''; },
+                };
+            },
+            async album() {
+                throw new Error('not implemented');
+            },
+            async track({ q }) {
+                requestedQuery = q;
+                return deezerTrackSearchResponse;
+            },
+        },
+    };
+    const result = await (0, Deezer_1.searchDeezerTracks)('Never Meant', 'American Football', mockClient);
+    strict_1.default.equal(requestedQuery, 'American Football Never Meant');
+    strict_1.default.deepEqual(result, deezerTrackSearchResponse);
+});
+(0, node_test_1.default)('getDeezerData with itemType=track returns the matched Deezer track URL', async () => {
+    const mockClient = {
+        search: {
+            builder() {
+                return {
+                    album() { return this; },
+                    build() { return ''; },
+                };
+            },
+            async album() {
+                throw new Error('not implemented');
+            },
+            async track() {
+                return deezerTrackSearchResponse;
+            },
+        },
+    };
+    const deezerUrl = await (0, Deezer_1.default)('Never Meant', 'American Football', 'track', mockClient);
+    strict_1.default.equal(deezerUrl, 'https://www.deezer.com/track/111111111');
 });

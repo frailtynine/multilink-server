@@ -2,14 +2,25 @@ import assert from 'node:assert/strict';
 import test from 'node:test';
 import {
     findMatchingSpotifyAlbum,
+    findMatchingSpotifyTrack,
     findSpotifyAlbumUrl,
+    findSpotifyTrackUrl,
     getSpotifyAlbum,
     getSpotifyAlbumDetails,
     getSpotifyData,
     getSpotifyReleaseDate,
+    getSpotifyTrackData,
+    getSpotifyTrackDetails,
     parseSpotifyId,
+    parseSpotifyTrackId,
 } from '../../src/features/Spotify';
-import { SpotifyAlbumResponse, SpotifyClient, SpotifySearchAlbumsResponse } from '../../src/types/spotify';
+import {
+    SpotifyAlbumResponse,
+    SpotifyClient,
+    SpotifySearchAlbumsResponse,
+    SpotifySearchTracksResponse,
+    SpotifyTrackResponse,
+} from '../../src/types/spotify';
 
 const spotifyAlbumResponse: SpotifyAlbumResponse = {
     data: {
@@ -143,6 +154,12 @@ test('getSpotifyData uses the parsed album id with the new Spotify client', asyn
             return spotifyAlbumResponse;
         },
         async searchAlbums(): Promise<SpotifySearchAlbumsResponse> {
+            throw new Error('not implemented');
+        },
+        async getTrack(): Promise<SpotifyTrackResponse> {
+            throw new Error('not implemented');
+        },
+        async searchTracks(): Promise<SpotifySearchTracksResponse> {
             throw new Error('not implemented');
         },
     };
@@ -330,6 +347,12 @@ test('findSpotifyAlbumUrl returns a canonical album URL from search results', as
 
             return spotifySearchAlbumsResponse;
         },
+        async getTrack(): Promise<SpotifyTrackResponse> {
+            throw new Error('not implemented');
+        },
+        async searchTracks(): Promise<SpotifySearchTracksResponse> {
+            throw new Error('not implemented');
+        },
     };
 
     const spotifyUrl = await findSpotifyAlbumUrl(
@@ -342,4 +365,213 @@ test('findSpotifyAlbumUrl returns a canonical album URL from search results', as
     assert.equal(requestedTerms, 'Touch Girl Apple Blossom Graceful');
     assert.equal(requestedLimit, 10);
     assert.equal(spotifyUrl, 'https://open.spotify.com/album/first-match');
+});
+
+const spotifyTrackResponse: SpotifyTrackResponse = {
+    data: {
+        trackUnion: {
+            __typename: 'Track',
+            id: 'trackId123',
+            uri: 'spotify:track:trackId123',
+            name: 'Graceful (Title Track)',
+            sharingInfo: {
+                shareUrl: 'https://open.spotify.com/track/trackId123',
+                shareId: 'trackId123',
+            },
+            artistsWithRoles: {
+                items: [
+                    {
+                        role: 'MAIN',
+                        artist: {
+                            id: 'artistId1',
+                            uri: 'spotify:artist:artistId1',
+                            profile: {
+                                name: 'Touch Girl Apple Blossom',
+                            },
+                        },
+                    },
+                ],
+            },
+            albumOfTrack: {
+                id: 'albumId1',
+                name: 'Graceful',
+                uri: 'spotify:album:albumId1',
+                date: {
+                    isoString: '2026-05-15T00:00:00Z',
+                    precision: 'DAY',
+                    year: 2026,
+                },
+                coverArt: {
+                    sources: [
+                        {
+                            url: 'https://i.scdn.co/image/track-cover',
+                            width: 640,
+                            height: 640,
+                        },
+                    ],
+                },
+            },
+        },
+    },
+};
+
+const spotifySearchTracksResponse: SpotifySearchTracksResponse = {
+    data: {
+        searchV2: {
+            tracksV2: {
+                items: [
+                    {
+                        item: {
+                            data: {
+                                __typename: 'Track',
+                                uri: 'spotify:track:track-match',
+                                id: 'track-match',
+                                name: 'Graceful (Title Track)',
+                                albumOfTrack: {
+                                    uri: 'spotify:album:albumId1',
+                                    name: 'Graceful',
+                                    id: 'albumId1',
+                                    coverArt: {
+                                        sources: [],
+                                    },
+                                },
+                                artists: {
+                                    items: [
+                                        {
+                                            uri: 'spotify:artist:artist-1',
+                                            profile: {
+                                                name: 'Touch Girl Apple Blossom',
+                                            },
+                                        },
+                                    ],
+                                },
+                            },
+                        },
+                    },
+                    {
+                        item: {
+                            data: {
+                                __typename: 'Track',
+                                uri: 'spotify:track:wrong-artist',
+                                id: 'wrong-artist',
+                                name: 'Graceful (Title Track)',
+                                albumOfTrack: {
+                                    uri: 'spotify:album:otherAlbum',
+                                    name: 'Other Album',
+                                    id: 'otherAlbum',
+                                    coverArt: {
+                                        sources: [],
+                                    },
+                                },
+                                artists: {
+                                    items: [
+                                        {
+                                            uri: 'spotify:artist:artist-2',
+                                            profile: {
+                                                name: 'Someone Else',
+                                            },
+                                        },
+                                    ],
+                                },
+                            },
+                        },
+                    },
+                ],
+            },
+        },
+    },
+};
+
+test('parseSpotifyTrackId returns the spotify track id from a track URL', () => {
+    const trackId = parseSpotifyTrackId('https://open.spotify.com/track/trackId123?si=example');
+
+    assert.equal(trackId, 'trackId123');
+});
+
+test('parseSpotifyTrackId rejects album URLs', () => {
+    assert.throws(() => parseSpotifyTrackId('https://open.spotify.com/album/2up3OPMp9Tb4dAKM2erWXQ'), {
+        message: 'Invalid Spotify URL',
+    });
+});
+
+test('getSpotifyTrackData uses the parsed track id with the Spotify client', async () => {
+    let requestedTrackId: string | undefined;
+    const spotifyClient: SpotifyClient = {
+        async getAlbum(): Promise<SpotifyAlbumResponse> {
+            throw new Error('not implemented');
+        },
+        async searchAlbums(): Promise<SpotifySearchAlbumsResponse> {
+            throw new Error('not implemented');
+        },
+        async getTrack(id: string): Promise<SpotifyTrackResponse> {
+            requestedTrackId = id;
+
+            return spotifyTrackResponse;
+        },
+        async searchTracks(): Promise<SpotifySearchTracksResponse> {
+            throw new Error('not implemented');
+        },
+    };
+
+    const result = await getSpotifyTrackData(
+        'https://open.spotify.com/track/trackId123?si=example',
+        spotifyClient,
+    );
+
+    assert.equal(requestedTrackId, 'trackId123');
+    assert.deepEqual(result, spotifyTrackResponse);
+});
+
+test('getSpotifyTrackDetails extracts fields from the Spotify track response', () => {
+    assert.deepEqual(getSpotifyTrackDetails(spotifyTrackResponse), {
+        spotifyUrl: 'https://open.spotify.com/track/trackId123',
+        trackName: 'Graceful (Title Track)',
+        albumName: 'Graceful',
+        artistName: 'Touch Girl Apple Blossom',
+        primaryArtistName: 'Touch Girl Apple Blossom',
+        imageUrl: 'https://i.scdn.co/image/track-cover',
+        releaseDate: '2026-05-15',
+    });
+});
+
+test('findMatchingSpotifyTrack prefers the result with matching track name and artist', () => {
+    const matchingTrack = findMatchingSpotifyTrack(
+        spotifySearchTracksResponse.data.searchV2.tracksV2.items,
+        'Graceful (Title Track)',
+        'Touch Girl Apple Blossom',
+    );
+
+    assert.deepEqual(matchingTrack, spotifySearchTracksResponse.data.searchV2.tracksV2.items[0]);
+});
+
+test('findSpotifyTrackUrl returns a canonical track URL from search results', async () => {
+    let requestedTerms: string | undefined;
+    let requestedLimit: number | undefined;
+    const spotifyClient: SpotifyClient = {
+        async getAlbum(): Promise<SpotifyAlbumResponse> {
+            throw new Error('not implemented');
+        },
+        async searchAlbums(): Promise<SpotifySearchAlbumsResponse> {
+            throw new Error('not implemented');
+        },
+        async getTrack(): Promise<SpotifyTrackResponse> {
+            throw new Error('not implemented');
+        },
+        async searchTracks(terms: string, limit?: number): Promise<SpotifySearchTracksResponse> {
+            requestedTerms = terms;
+            requestedLimit = limit;
+
+            return spotifySearchTracksResponse;
+        },
+    };
+
+    const trackUrl = await findSpotifyTrackUrl(
+        'Graceful (Title Track)',
+        'Touch Girl Apple Blossom',
+        spotifyClient,
+    );
+
+    assert.equal(requestedTerms, 'Touch Girl Apple Blossom Graceful (Title Track)');
+    assert.equal(requestedLimit, 10);
+    assert.equal(trackUrl, 'https://open.spotify.com/track/track-match');
 });
