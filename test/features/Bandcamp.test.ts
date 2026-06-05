@@ -39,7 +39,7 @@ test('getBandcampAlbumDetails extracts the fields used by the app', () => {
 
 test('composeBandcampSearchUrl composes a search URL with item_type=a', () => {
     assert.equal(
-        composeBandcampSearchUrl('achers', 'bottom of the hill'),
+        composeBandcampSearchUrl('achers', 'bottom of the hill', 'album'),
         'https://bandcamp.com/search?q=achers+bottom%2Bof%2Bthe%2Bhill&item_type=a',
     );
 });
