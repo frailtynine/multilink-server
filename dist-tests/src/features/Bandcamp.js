@@ -77,14 +77,14 @@ async function getBandcampAlbumData(bandcampUrl) {
 async function getBandcampAlbumDetailsFromUrl(bandcampUrl) {
     return getBandcampAlbumDetails(await getBandcampAlbumData(bandcampUrl));
 }
-function composeBandcampSearchUrl(artistName, albumName) {
+function composeBandcampSearchUrl(artistName, albumName, itemType) {
     const query = [
         normalizeBandcampSearchTerm(artistName),
         normalizeBandcampSearchTerm(albumName),
     ].filter(Boolean).join(' ');
     const searchParams = new URLSearchParams({
         q: query,
-        item_type: 'a',
+        item_type: itemType === 'album' ? 'a' : 't',
     });
     return `https://bandcamp.com/search?${searchParams.toString()}`;
 }

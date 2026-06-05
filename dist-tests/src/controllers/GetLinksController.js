@@ -147,7 +147,7 @@ let GetLinksController = class GetLinksController {
             }
         }
         if (!bandcampUrl) {
-            bandcampUrl = (0, Bandcamp_1.composeBandcampSearchUrl)(itemDetails.primaryArtistName, itemDetails.albumName);
+            bandcampUrl = (0, Bandcamp_1.composeBandcampSearchUrl)(itemDetails.primaryArtistName, itemDetails.albumName, itemDetails.itemType);
         }
         let appleMusicUrl;
         try {

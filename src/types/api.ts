@@ -2,6 +2,8 @@ export interface ErrorResponse {
     message: string;
 }
 
+export type ItemType = 'album' | 'track';
+
 export interface GetLinksResponse {
     spotifyUrl?: string;
     bandcampUrl: string;
@@ -11,5 +13,6 @@ export interface GetLinksResponse {
     imageUrl: string;
     albumName: string;
     artistName: string;
-    itemType?: 'album' | 'track';
+    itemType?: ItemType;
 }
+

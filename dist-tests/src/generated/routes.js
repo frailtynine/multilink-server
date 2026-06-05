@@ -8,6 +8,11 @@ const auth_1 = require("./../middleware/auth");
 const expressAuthenticationRecasted = auth_1.expressAuthentication;
 // WARNING: This file was auto-generated with tsoa. Please do not modify it. Re-run tsoa to re-generate this file: https://github.com/lukeautry/tsoa
 const models = {
+    "ItemType": {
+        "dataType": "refAlias",
+        "type": { "dataType": "union", "subSchemas": [{ "dataType": "enum", "enums": ["album"] }, { "dataType": "enum", "enums": ["track"] }], "validators": {} },
+    },
+    // WARNING: This file was auto-generated with tsoa. Please do not modify it. Re-run tsoa to re-generate this file: https://github.com/lukeautry/tsoa
     "GetLinksResponse": {
         "dataType": "refObject",
         "properties": {
@@ -19,7 +24,7 @@ const models = {
             "imageUrl": { "dataType": "string", "required": true },
             "albumName": { "dataType": "string", "required": true },
             "artistName": { "dataType": "string", "required": true },
-            "itemType": { "dataType": "union", "subSchemas": [{ "dataType": "enum", "enums": ["album"] }, { "dataType": "enum", "enums": ["track"] }] },
+            "itemType": { "ref": "ItemType" },
         },
         "additionalProperties": false,
     },

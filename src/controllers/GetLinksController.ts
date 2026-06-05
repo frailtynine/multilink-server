@@ -18,7 +18,7 @@ import {
     parseSpotifyTrackId,
 } from '../features/Spotify';
 import { getLogger } from '../logging/logger';
-import { ErrorResponse, GetLinksResponse } from '../types/api';
+import { ErrorResponse, GetLinksResponse, ItemType } from '../types/api';
 import getTidalUrl from '../features/Tidal';
 import { Get, Query, Res, Response, Route, SuccessResponse, Tags, TsoaResponse, Security } from 'tsoa';
 import getDeezerData from '../features/Deezer';
@@ -69,7 +69,7 @@ export class GetLinksController {
         let spotifyUrl: string | undefined;
         let bandcampUrl: string | undefined;
         let inputSource: 'spotify' | 'bandcamp';
-        let itemType: 'album' | 'track';
+        let itemType: ItemType;
         try {
             const sourceResult = getUrlSource(url);
             inputSource = sourceResult.source;
@@ -168,7 +168,7 @@ export class GetLinksController {
         }
 
         if (!bandcampUrl) {
-            bandcampUrl = composeBandcampSearchUrl(itemDetails.primaryArtistName, itemDetails.albumName);
+            bandcampUrl = composeBandcampSearchUrl(itemDetails.primaryArtistName, itemDetails.albumName, itemDetails.itemType);
         }
 
         let appleMusicUrl: string | undefined;

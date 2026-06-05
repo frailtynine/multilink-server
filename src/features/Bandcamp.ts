@@ -1,4 +1,5 @@
 import bcfetch, { Album, Track } from 'bandcamp-fetch';
+import { ItemType} from '../types/api';
 
 export interface BandcampAlbumDetails {
     albumName: string;
@@ -97,7 +98,7 @@ export async function getBandcampAlbumDetailsFromUrl(
     return getBandcampAlbumDetails(await getBandcampAlbumData(bandcampUrl));
 }
 
-export function composeBandcampSearchUrl(artistName: string, albumName: string): string {
+export function composeBandcampSearchUrl(artistName: string, albumName: string, itemType: ItemType): string {
     const query = [
         normalizeBandcampSearchTerm(artistName),
         normalizeBandcampSearchTerm(albumName),
@@ -105,7 +106,7 @@ export function composeBandcampSearchUrl(artistName: string, albumName: string):
 
     const searchParams = new URLSearchParams({
         q: query,
-        item_type: 'a',
+        item_type: itemType === 'album' ? 'a' : 't',
     });
 
     return `https://bandcamp.com/search?${searchParams.toString()}`;
