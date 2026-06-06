@@ -5,8 +5,6 @@ export interface ErrorResponse {
 export type ItemType = 'album' | 'track';
 
 export interface GetLinksResponse {
-    metacriticScore?: number;
-    metacriticUrl?: string;
     spotifyUrl?: string;
     bandcampUrl: string;
     appleMusicUrl?: string;
@@ -17,3 +15,4 @@ export interface GetLinksResponse {
     artistName: string;
     itemType?: ItemType;
 }
+

@@ -16,13 +16,6 @@
             },
             "GetLinksResponse": {
                 "properties": {
-                    "metacriticScore": {
-                        "type": "number",
-                        "format": "double"
-                    },
-                    "metacriticUrl": {
-                        "type": "string"
-                    },
                     "spotifyUrl": {
                         "type": "string"
                     },

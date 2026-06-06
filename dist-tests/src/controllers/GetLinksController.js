@@ -21,7 +21,6 @@ const Tidal_1 = __importDefault(require("../features/Tidal"));
 const tsoa_1 = require("tsoa");
 const Deezer_1 = __importDefault(require("../features/Deezer"));
 const getLinksQueue_1 = require("../utils/getLinksQueue");
-const Metacritic_1 = require("../features/Metacritic");
 function getUrlSource(url) {
     try {
         (0, Spotify_1.parseSpotifyTrackId)(url);
@@ -153,30 +152,6 @@ let GetLinksController = class GetLinksController {
                 if (!bandcampUrl) {
                     bandcampUrl = (0, Bandcamp_1.composeBandcampSearchUrl)(itemDetails.primaryArtistName, itemDetails.albumName, itemDetails.itemType);
                 }
-                let metacriticScore;
-                let metacriticUrl;
-                if (itemDetails.itemType === 'album') {
-                    try {
-                        const score = await (0, Metacritic_1.getMetacriticAlbumMetascore)(itemDetails.albumName, itemDetails.primaryArtistName);
-                        if (score !== undefined) {
-                            metacriticUrl = (0, Metacritic_1.createMetacriticAlbumUrl)(itemDetails.albumName, itemDetails.primaryArtistName);
-                            metacriticScore = score;
-                        }
-                        else {
-                            metacriticScore = undefined;
-                            metacriticUrl = undefined;
-                        }
-                    }
-                    catch (error) {
-                        metacriticScore = undefined;
-                        metacriticUrl = undefined;
-                        this.logger.error('Failed to fetch Metacritic metascore', {
-                            error,
-                            albumName: itemDetails.albumName,
-                            artistName: itemDetails.primaryArtistName,
-                        });
-                    }
-                }
                 let appleMusicUrl;
                 try {
                     appleMusicUrl = await (0, AppleMusic_1.AppleMusicFinder)(itemDetails.albumName, itemDetails.primaryArtistName, itemDetails.releaseDate, undefined, itemDetails.itemType);
@@ -216,8 +191,6 @@ let GetLinksController = class GetLinksController {
                     });
                 }
                 return {
-                    metacriticScore,
-                    metacriticUrl,
                     spotifyUrl,
                     bandcampUrl,
                     appleMusicUrl,

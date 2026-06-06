@@ -16,8 +16,6 @@ const models = {
     "GetLinksResponse": {
         "dataType": "refObject",
         "properties": {
-            "metacriticScore": { "dataType": "double" },
-            "metacriticUrl": { "dataType": "string" },
             "spotifyUrl": { "dataType": "string" },
             "bandcampUrl": { "dataType": "string", "required": true },
             "appleMusicUrl": { "dataType": "string" },
