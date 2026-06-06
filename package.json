@@ -34,7 +34,6 @@
     "deezer-public-api": "^2.1.4",
     "dotenv": "^17.4.2",
     "express": "^5.2.1",
-    "puppeteer-core": "^25.1.0",
     "swagger-ui-express": "^5.0.1",
     "tsoa": "^7.0.0-alpha.0"
   }

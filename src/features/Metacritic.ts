@@ -1,6 +1,8 @@
-import puppeteer from 'puppeteer-core';
+import { execFile } from 'node:child_process';
+import { promisify } from 'node:util';
 
 const METACRITIC_MUSIC_BASE_URL = 'https://www.metacritic.com/music';
+const execFileAsync = promisify(execFile);
 
 type MetacriticHtmlFetcher = (url: string) => Promise<{ status: number; body: string }>;
 
@@ -51,32 +53,35 @@ function extractMetascoreFromHtml(html: string): number | undefined {
 }
 
 async function fetchMetacriticHtml(url: string): Promise<{ status: number; body: string }> {
-    const browser = await puppeteer.launch({
-        executablePath: process.env.PUPPETEER_EXECUTABLE_PATH,
-        headless: true,
-        args: ['--no-sandbox', '--disable-setuid-sandbox'],
-    });
+    const { stdout } = await execFileAsync('curl', [
+        '--http1.1',
+        '--silent',
+        '--show-error',
+        '--location',
+        '--max-time',
+        '30',
+        '--user-agent',
+        'PostmanRuntime/7.43.0',
+        '--header',
+        'Accept: */*',
+        '--header',
+        'Connection: keep-alive',
+        '--write-out',
+        '\n%{http_code}',
+        url,
+    ]);
 
-    try {
-        const page = await browser.newPage();
-        await page.setUserAgent('Mozilla/5.0 (X11; Linux x86_64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/126.0.0.0 Safari/537.36');
+    const separatorIndex = stdout.lastIndexOf('\n');
+    const statusText = separatorIndex >= 0 ? stdout.slice(separatorIndex + 1).trim() : '';
+    const status = Number(statusText);
 
-        const response = await page.goto(url, {
-            waitUntil: 'domcontentloaded',
-            timeout: 30_000,
-        });
-
-        const status = response?.status() ?? 0;
-        const body = await page.content();
-
-        if (!Number.isInteger(status) || status <= 0) {
-            throw new Error('Failed to parse Metacritic response status');
-        }
-
-        return { status, body };
-    } finally {
-        await browser.close();
+    if (!Number.isInteger(status)) {
+        throw new Error('Failed to parse Metacritic response status');
     }
+
+    const body = separatorIndex >= 0 ? stdout.slice(0, separatorIndex) : '';
+
+    return { status, body };
 }
 
 export async function getMetacriticAlbumMetascore(
