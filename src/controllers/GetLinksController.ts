@@ -23,6 +23,7 @@ import getTidalUrl from '../features/Tidal';
 import { Get, Query, Res, Response, Route, SuccessResponse, Tags, TsoaResponse, Security } from 'tsoa';
 import getDeezerData from '../features/Deezer';
 import { GetLinksQueueTimeoutError, scheduleGetLinksRequest } from '../utils/getLinksQueue';
+import { createMetacriticAlbumUrl, getMetacriticAlbumMetascore } from '../features/Metacritic';
 
 type InputItemDetails = (ReturnType<typeof getSpotifyAlbumDetails> | BandcampAlbumDetails) & {
     itemType: 'album' | 'track';
@@ -176,6 +177,28 @@ export class GetLinksController {
                 if (!bandcampUrl) {
                     bandcampUrl = composeBandcampSearchUrl(itemDetails.primaryArtistName, itemDetails.albumName, itemDetails.itemType);
                 }
+                let metacriticScore: number | undefined;
+                let metacriticUrl: string | undefined;
+                if (itemDetails.itemType === 'album') {
+                    try {
+                        const score = await getMetacriticAlbumMetascore(itemDetails.albumName, itemDetails.primaryArtistName);
+                        if (score !== undefined) {
+                            metacriticUrl = createMetacriticAlbumUrl(itemDetails.albumName, itemDetails.primaryArtistName);
+                            metacriticScore = score;
+                        } else {
+                            metacriticScore = undefined;
+                            metacriticUrl = undefined;
+                        }
+                    } catch (error) {
+                        metacriticScore = undefined;
+                        metacriticUrl = undefined;
+                        this.logger.error('Failed to fetch Metacritic metascore', {
+                            error,
+                            albumName: itemDetails.albumName,
+                            artistName: itemDetails.primaryArtistName,
+                        });
+                    }
+                }
         
                 let appleMusicUrl: string | undefined;
                 try {
@@ -230,6 +253,8 @@ export class GetLinksController {
                     });
                 }
                 return {
+                    metacriticScore,
+                    metacriticUrl,
                     spotifyUrl,
                     bandcampUrl,
                     appleMusicUrl,
