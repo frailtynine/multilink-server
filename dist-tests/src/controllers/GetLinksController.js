@@ -13,7 +13,7 @@ var __importDefault = (this && this.__importDefault) || function (mod) {
 };
 Object.defineProperty(exports, "__esModule", { value: true });
 exports.GetLinksController = void 0;
-const AppleMusic_1 = require("../features/AppleMusic");
+const AppleMusic_1 = require("../features/AppleMusic/AppleMusic");
 const Bandcamp_1 = require("../features/Bandcamp");
 const Spotify_1 = require("../features/Spotify");
 const logger_1 = require("../logging/logger");

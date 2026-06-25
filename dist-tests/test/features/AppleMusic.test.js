@@ -5,8 +5,7 @@ var __importDefault = (this && this.__importDefault) || function (mod) {
 Object.defineProperty(exports, "__esModule", { value: true });
 const strict_1 = __importDefault(require("node:assert/strict"));
 const node_test_1 = __importDefault(require("node:test"));
-const applemusic_api_1 = require("@syncfm/applemusic-api");
-const AppleMusic_1 = require("../../src/features/AppleMusic");
+const AppleMusic_1 = require("../../src/features/AppleMusic/AppleMusic");
 const appleMusicAlbums = [
     {
         id: 'first',
@@ -107,7 +106,7 @@ const appleMusicSearchResponse = {
             },
         },
     };
-    const result = await (0, AppleMusic_1.searchAppleMusic)('American Football', 'American Football (LP4)', applemusic_api_1.ResourceType.Albums, fakeClient);
+    const result = await (0, AppleMusic_1.searchAppleMusic)('American Football', 'American Football (LP4)', AppleMusic_1.ResourceType.Albums, fakeClient);
     strict_1.default.equal(initialized, true);
     strict_1.default.deepEqual(request, {
         term: 'American Football American Football (LP4)',
@@ -183,7 +182,7 @@ const appleMusicSongsSearchResponse = {
             },
         },
     };
-    const result = await (0, AppleMusic_1.searchAppleMusic)('American Football', 'Never Meant', applemusic_api_1.ResourceType.Songs, fakeClient);
+    const result = await (0, AppleMusic_1.searchAppleMusic)('American Football', 'Never Meant', AppleMusic_1.ResourceType.Songs, fakeClient);
     strict_1.default.deepEqual(request?.types, ['songs']);
     strict_1.default.equal(request?.term, 'American Football Never Meant');
     strict_1.default.deepEqual(result, appleMusicSongsSearchResponse);

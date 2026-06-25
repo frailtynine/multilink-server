@@ -1,12 +1,13 @@
-import { AppleMusic, AuthType, Region, ResourceType } from '@syncfm/applemusic-api';
+import getAppleMusicDevToken from './AppleMusicDevToken';
 import {
     AppleMusicAlbumResult,
     AppleMusicSearchResponse,
     AppleMusicSearchResultContainer,
     AppleMusicSongResult,
-} from '../types/appleMusic';
-import { findMatchingAlbum } from '../utils/albumMatching';
-import { releaseDatesMatch } from '../utils/releaseDate';
+} from '../../types/appleMusic';
+import { findMatchingAlbum } from '../../utils/albumMatching';
+import { releaseDatesMatch } from '../../utils/releaseDate';
+
 
 export interface AppleMusicClient {
     init(): Promise<void>;
@@ -19,22 +20,68 @@ export interface AppleMusicClient {
     };
 }
 
-function resolveAppleMusicRegion(): Region {
-    const configuredRegion = process.env.APPLE_MUSIC_REGION?.toLowerCase();
-    const supportedRegions = new Set<string>(Object.values(Region));
+export enum ResourceType {
+    Albums = 'albums',
+    Songs = 'songs',
+}
 
-    if (configuredRegion && supportedRegions.has(configuredRegion)) {
-        return configuredRegion as Region;
+function resolveAppleMusicRegion(): string {
+    const configuredRegion = process.env.APPLE_MUSIC_REGION?.trim().toLowerCase();
+
+    if (configuredRegion && /^[a-z]{2}$/.test(configuredRegion)) {
+        return configuredRegion;
     }
 
-    return Region.US;
+    return 'us';
+}
+
+class AppleMusicApiClient implements AppleMusicClient {
+    private readonly region: string;
+    private developerToken?: string;
+
+    constructor(region: string) {
+        this.region = region;
+    }
+
+    async init(): Promise<void> {
+        if (!this.developerToken) {
+            this.developerToken = await getAppleMusicDevToken();
+        }
+    }
+
+    Search = {
+        search: async (options: {
+            term: string;
+            types: ResourceType[];
+            limit: number;
+        }): Promise<AppleMusicSearchResponse> => {
+            if (!this.developerToken) {
+                throw new Error('Apple Music client not initialized');
+            }
+
+            const url = new URL(`https://api.music.apple.com/v1/catalog/${this.region}/search`);
+            url.searchParams.set('term', options.term);
+            url.searchParams.set('types', options.types.join(','));
+            url.searchParams.set('limit', String(options.limit));
+
+            const response = await fetch(url, {
+                headers: {
+                    Authorization: `Bearer ${this.developerToken}`,
+                },
+            });
+
+            if (!response.ok) {
+                const body = await response.text();
+                throw new Error(`Apple Music search failed (${response.status}): ${body}`);
+            }
+
+            return (await response.json()) as AppleMusicSearchResponse;
+        },
+    };
 }
 
 export function createAppleMusicClient(): AppleMusicClient {
-    return new AppleMusic({
-        region: resolveAppleMusicRegion(),
-        authType: AuthType.Scraped,
-    });
+    return new AppleMusicApiClient(resolveAppleMusicRegion());
 }
 
 export function extractAppleMusicAlbums(

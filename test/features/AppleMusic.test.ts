@@ -1,14 +1,14 @@
 import assert from 'node:assert/strict';
 import test from 'node:test';
-import { ResourceType } from '@syncfm/applemusic-api';
 import {
     AppleMusicFinder,
+    ResourceType,
     extractAppleMusicAlbums,
     extractAppleMusicSongs,
     findMatchingAppleMusicAlbum,
     findMatchingAppleMusicSong,
     searchAppleMusic,
-} from '../../src/features/AppleMusic';
+} from '../../src/features/AppleMusic/AppleMusic';
 import { AppleMusicAlbumResult, AppleMusicSearchResponse, AppleMusicSongResult } from '../../src/types/appleMusic';
 
 const appleMusicAlbums: AppleMusicAlbumResult[] = [

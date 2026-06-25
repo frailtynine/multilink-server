@@ -11,11 +11,14 @@ services:
       LOKI_URL: ${LOKI_URL:-}
       LOKI_USER: ${LOKI_USER:-}
       LOKI_API_KEY: ${LOKI_API_KEY:-}
+      APPLE_DEV_KEY_PATH: /run/secrets/AuthKey_${APPLE_DEV_KEY_ID}.p8
       NODE_ENV: production
       PORT: 3000
       PUPPETEER_EXECUTABLE_PATH: /usr/bin/chromium
       # Reserved for a future Redis-backed feature set.
       REDIS_URL: ${REDIS_URL:-}
+    volumes:
+      - ./AuthKey_${APPLE_DEV_KEY_ID}.p8:/run/secrets/AuthKey_${APPLE_DEV_KEY_ID}.p8:ro
     ports:
       - "127.0.0.1:${EXTERNAL_PORT:-3000}:3000"
     networks:

@@ -3,6 +3,7 @@ import { Request } from 'express';
 export function expressAuthentication(
     request: Request,
     securityName: string,
+    _scopes?: string[],
 ): Promise<any> {
     if (securityName === 'api_token') {
         const token = request.headers['authorization'];

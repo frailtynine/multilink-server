@@ -18,3 +18,5 @@ pnpm-debug.log*
 .vscode/
 .idea/
 .opencode/
+
+*.p8
