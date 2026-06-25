@@ -1,7 +1,7 @@
 "use strict";
 Object.defineProperty(exports, "__esModule", { value: true });
 exports.expressAuthentication = expressAuthentication;
-function expressAuthentication(request, securityName) {
+function expressAuthentication(request, securityName, _scopes) {
     if (securityName === 'api_token') {
         const token = request.headers['authorization'];
         const validToken = process.env.API_TOKEN;

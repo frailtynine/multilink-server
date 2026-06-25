@@ -1,6 +1,6 @@
 # Multilink Server
 
-Every single music multilink service went down because Spotify changed their API rate limits. So, here's something you can host yourself. Scrapes data from Spotify, Bandcamp, Apple Music and Deezer, for Tidal you need dev credentials. The API is protected by a token, so you can keep it private or share it with friends. Wouldn't recommend running it with thousands of requests per minute, but should be fine as a personal service.
+Every single music multilink service went down because Spotify changed their API rate limits. So, here's something you can host yourself. Scrapes data from Spotify, Bandcamp, Apple Music and Deezer; for Apple Music and Tidal you need developer credentials. The API is protected by a token, so you can keep it private or share it with friends. Wouldn't recommend running it with thousands of requests per minute, but should be fine as a personal service.
 
 ## What this service does
 
@@ -25,6 +25,7 @@ The deployment host must contain this repository at the path referenced by the G
 
 - `docker-compose.prod.yml`
 - a production `.env` file
+- Apple Music private key file named `AuthKey_<APPLE_DEV_KEY_ID>.p8` (or set a custom path via `APPLE_DEV_KEY_PATH`)
 
 ## Required configuration
 
@@ -55,6 +56,9 @@ Create a `.env` file on the deployment host with the values your runtime needs:
 | `EXTERNAL_PORT` | No | Host port mapped to container port 3000 |
 | `API_TOKEN` | Yes | Required for authenticated API access |
 | `APPLE_MUSIC_REGION` | No | Apple Music storefront region code (for example `us`, `ru`). Defaults to `us` |
+| `APPLE_DEV_TEAM_ID` | Yes | Apple Developer Team ID used to sign Apple Music developer token |
+| `APPLE_DEV_KEY_ID` | Yes | Apple Music key id (the suffix in `AuthKey_<KEY_ID>.p8`) |
+| `APPLE_DEV_KEY_PATH` | No | Optional key path override. Defaults to `AuthKey_<APPLE_DEV_KEY_ID>.p8` locally and `/run/secrets/AuthKey_<APPLE_DEV_KEY_ID>.p8` in Docker Compose |
 | `TIDAL_CLIENT_ID` | Yes | Required for Tidal lookups |
 | `TIDAL_CLIENT_SECRET` | Yes | Required for Tidal lookups |
 | `LOG_LEVEL` | No | Defaults to `INFO` |
@@ -64,6 +68,15 @@ Create a `.env` file on the deployment host with the values your runtime needs:
 | `REDIS_URL` | No | Reserved for future use |
 
 Do not commit production secrets to the repository.
+
+### Apple Music key file in Docker
+
+Both `docker-compose.yml` and `docker-compose.prod.yml` mount the Apple key file automatically using `APPLE_DEV_KEY_ID`:
+
+- host path: `./AuthKey_${APPLE_DEV_KEY_ID}.p8`
+- container path: `/run/secrets/AuthKey_${APPLE_DEV_KEY_ID}.p8`
+
+Make sure the key file exists next to your compose file and `.env` on the deployment host.
 
 ## CI/CD flow
 

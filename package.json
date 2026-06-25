@@ -20,12 +20,11 @@
     "@types/node": "^25.6.0",
     "nodemon": "^3.1.14",
     "ts-node": "^10.9.2",
-    "typescript": "^6.0.3"
+    "typescript": "^5.9.3"
   },
   "dependencies": {
     "@manhgdev/spotifyweb": "^6.0.2",
     "@spotify/web-api-ts-sdk": "^1.2.0",
-    "@syncfm/applemusic-api": "^0.0.4",
     "@tidal-music/api": "^0.23.0",
     "@tidal-music/auth": "^1.6.0",
     "@types/swagger-ui-express": "^4.1.8",
@@ -34,7 +33,8 @@
     "deezer-public-api": "^2.1.4",
     "dotenv": "^17.4.2",
     "express": "^5.2.1",
+    "jose": "^6.2.3",
     "swagger-ui-express": "^5.0.1",
-    "tsoa": "^7.0.0-alpha.0"
+    "tsoa": "6.6.0"
   }
 }

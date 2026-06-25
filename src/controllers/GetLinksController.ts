@@ -1,4 +1,4 @@
-import { AppleMusicFinder } from '../features/AppleMusic';
+import { AppleMusicFinder } from '../features/AppleMusic/AppleMusic';
 import {
     BandcampAlbumDetails,
     composeBandcampSearchUrl,
