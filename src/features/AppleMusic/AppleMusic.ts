@@ -163,7 +163,6 @@ const AppleMusicFinder = async (
 
         return url;
     }
-
     const response = await searchAppleMusic(artistName, name, ResourceType.Albums, client);
     const albums = extractAppleMusicAlbums(response);
     const matchingAlbum = releaseDate
